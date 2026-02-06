@@ -47,7 +47,16 @@
 	 transition: all 0.2s ease;
 	}
 	
-	.view-ar-button:hover {
+	.view-ar-button.loading,
+	.view-ar-button:disabled {
+	 background: #a878e8;
+	 cursor: not-allowed;
+	 box-shadow: 0 4px 20px rgba(121, 22, 255, 0.2);
+	 pointer-events: none;
+	 opacity: 0.7;
+	}
+
+	.view-ar-button:hover:not(:disabled) {
 	 background: #6a12e6;
 	 transform: translateX(-50%) scale(1.02);
 	}

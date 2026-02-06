@@ -351,14 +351,33 @@ const startAR = () => {
   XRExtras.Loading.showLoading({onxrloaded})
 }
 
-// Initialize page - set up button listeners
-window.onload = () => {
-  // View in AR button
-  document.getElementById('view-ar-btn').addEventListener('click', startAR)
-  
-  // Back button to return to preview
+const enableARButton = () => {
+  const btn = document.getElementById('view-ar-btn')
+  btn.disabled = false
+  btn.classList.remove('loading')
+}
+
+const waitForARReady = () => {
+  const check = () => {
+    if (typeof XRExtras !== 'undefined' && typeof XR8 !== 'undefined') {
+      enableARButton()
+    } else {
+      setTimeout(check, 200)
+    }
+  }
+  check()
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const arBtn = document.getElementById('view-ar-btn')
+  arBtn.disabled = true
+  arBtn.classList.add('loading')
+
+  arBtn.addEventListener('click', startAR)
+
   document.getElementById('back-btn').addEventListener('click', () => {
-    // Reload the page to properly reset AR state
     window.location.reload()
   })
-}
+
+  waitForARReady()
+})
