@@ -2,7 +2,7 @@
 // Self-hosted 8th Wall engine for World Effects (SLAM tracking)
 // Branding hidden via CSS
 
-/* globals XR8 XRExtras THREE TWEEN */
+/* globals XR8 XRExtras CoachingOverlay THREE TWEEN */
 
 // GLB model URL (Supabase)
 const RUG_MODEL_URL = 'https://dfcksvowcprcrpkpfptk.supabase.co/storage/v1/object/public/3d-models/models/2A0pQDoKVq/carpet_model_20260210_094217.glb'
@@ -315,8 +315,12 @@ const rugARScenePipelineModule = () => {
 
 // Initialize when XR8 is loaded
 const onxrloaded = () => {
-  // Enable Absolute Scale - returns positions in meters for real-world sizing
   XR8.XrController.configure({scale: 'absolute'})
+
+  CoachingOverlay.configure({
+    animationColor: '#ffffff',
+    promptText: 'Move your phone slowly to detect surfaces',
+  })
 
   XR8.addCameraPipelineModules([
     XR8.GlTextureRenderer.pipelineModule(),
@@ -326,6 +330,7 @@ const onxrloaded = () => {
     XRExtras.FullWindowCanvas.pipelineModule(),
     XRExtras.Loading.pipelineModule(),
     XRExtras.RuntimeError.pipelineModule(),
+    CoachingOverlay.pipelineModule(),
     rugARScenePipelineModule(),
   ])
 
@@ -347,7 +352,7 @@ const enableARButton = () => {
 
 const waitForARReady = () => {
   const check = () => {
-    if (typeof XRExtras !== 'undefined' && typeof XR8 !== 'undefined') {
+    if (typeof XRExtras !== 'undefined' && typeof XR8 !== 'undefined' && typeof CoachingOverlay !== 'undefined') {
       enableARButton()
     } else {
       setTimeout(check, 200)
