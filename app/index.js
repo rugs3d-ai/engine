@@ -70,7 +70,6 @@ const createBackButton = () => {
 // Show AR overlay and tap indicator when AR starts
 const showOverlay = () => {
   document.getElementById('overlay').style.display = 'block'
-  document.getElementById('tap-indicator').style.display = 'flex'
   setTimeout(() => {
     createBackButton()
     setInterval(() => {
@@ -83,6 +82,10 @@ const showOverlay = () => {
       }
     }, 500)
   }, 1500)
+}
+
+const showTapIndicator = () => {
+  document.getElementById('tap-indicator').style.display = 'flex'
 }
 
 // Hide tap indicator when rug is placed
@@ -277,6 +280,8 @@ const rugARScenePipelineModule = () => {
     }
   }
 
+  let coachingComplete = false
+
   return {
     name: 'rug-ar',
 
@@ -285,7 +290,6 @@ const rugARScenePipelineModule = () => {
 
       initXrScene({scene, camera, renderer})
 
-      // Touch event listeners for tap to place, drag rotate, and pinch zoom
       canvas.addEventListener('touchstart', touchStartHandler, true)
       canvas.addEventListener('touchmove', touchMoveHandler, {passive: false, capture: true})
       canvas.addEventListener('touchend', touchEndHandler, true)
@@ -301,14 +305,16 @@ const rugARScenePipelineModule = () => {
         facing: camera.quaternion,
       })
 
-      // Show AR overlay
       showOverlay()
-      
-      // Enable tap-to-place after a short delay to avoid capturing permission dialog taps
-      setTimeout(() => {
+    },
+
+    onUpdate: ({processCpuResult}) => {
+      if (!coachingComplete && processCpuResult.reality && processCpuResult.reality.trackingStatus === 'NORMAL') {
+        coachingComplete = true
         tapEnabled = true
-        console.log('Tap-to-place enabled')
-      }, 1000)
+        showTapIndicator()
+        console.log('Coaching complete - tap-to-place enabled')
+      }
     },
   }
 }
