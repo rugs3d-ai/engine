@@ -34,13 +34,15 @@ const showPreview = () => {
 const showARView = () => {
   document.getElementById('preview-page').style.display = 'none'
   document.getElementById('ar-view').style.display = 'block'
-  document.getElementById('back-btn').style.display = 'flex'
 }
 
 // Show AR overlay and tap indicator when AR starts
 const showOverlay = () => {
   document.getElementById('overlay').style.display = 'block'
   document.getElementById('tap-indicator').style.display = 'flex'
+  const backBtn = document.getElementById('back-btn')
+  document.body.appendChild(backBtn)
+  backBtn.style.display = 'flex'
 }
 
 // Hide tap indicator when rug is placed
