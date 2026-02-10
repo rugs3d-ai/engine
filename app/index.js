@@ -36,13 +36,53 @@ const showARView = () => {
   document.getElementById('ar-view').style.display = 'block'
 }
 
+const createBackButton = () => {
+  const existing = document.getElementById('back-btn-ar')
+  if (existing) existing.remove()
+
+  const btn = document.createElement('button')
+  btn.id = 'back-btn-ar'
+  btn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  btn.setAttribute('style', [
+    'position:fixed',
+    'top:20px',
+    'left:20px',
+    'z-index:2147483647',
+    'width:44px',
+    'height:44px',
+    'display:flex',
+    'align-items:center',
+    'justify-content:center',
+    'background:rgba(255,255,255,0.9)',
+    'border:none',
+    'border-radius:50%',
+    'cursor:pointer',
+    'box-shadow:0 2px 10px rgba(0,0,0,0.2)',
+    'transform:translateZ(0)',
+    'pointer-events:auto',
+    'color:#333',
+  ].join(' !important;') + ' !important')
+  btn.addEventListener('click', () => { window.location.reload() })
+  document.body.appendChild(btn)
+  return btn
+}
+
 // Show AR overlay and tap indicator when AR starts
 const showOverlay = () => {
   document.getElementById('overlay').style.display = 'block'
   document.getElementById('tap-indicator').style.display = 'flex'
-  const backBtn = document.getElementById('back-btn')
-  document.body.appendChild(backBtn)
-  backBtn.style.display = 'flex'
+  setTimeout(() => {
+    createBackButton()
+    setInterval(() => {
+      const btn = document.getElementById('back-btn-ar')
+      if (!btn || !btn.parentNode) {
+        createBackButton()
+      } else if (btn.style.display === 'none' || btn.style.visibility === 'hidden') {
+        btn.style.setProperty('display', 'flex', 'important')
+        btn.style.setProperty('visibility', 'visible', 'important')
+      }
+    }, 500)
+  }, 1500)
 }
 
 // Hide tap indicator when rug is placed
@@ -377,10 +417,6 @@ document.addEventListener('DOMContentLoaded', () => {
   arBtn.classList.add('loading')
 
   arBtn.addEventListener('click', startAR)
-
-  document.getElementById('back-btn').addEventListener('click', () => {
-    window.location.reload()
-  })
 
   waitForARReady()
 })
