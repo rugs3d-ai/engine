@@ -34,6 +34,7 @@ const showPreview = () => {
 const showARView = () => {
   document.getElementById('preview-page').style.display = 'none'
   document.getElementById('ar-view').style.display = 'block'
+  document.getElementById('back-btn').style.display = 'flex'
 }
 
 // Show AR overlay and tap indicator when AR starts
