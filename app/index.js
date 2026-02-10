@@ -98,25 +98,17 @@ const hideTapIndicator = () => {
 
 const rugARScenePipelineModule = () => {
   const startScale = new THREE.Vector3(0.01, 0.01, 0.01)
-  // With Absolute Scale enabled, scale of 1 = real-world size from GLB model (in meters)
   const endScale = new THREE.Vector3(1, 1, 1)
   const animationMillis = 500
 
-  const raycaster = new THREE.Raycaster()
-  const tapPosition = new THREE.Vector2()
-  
   THREE.ColorManagement.enabled = false
 
-  let surface
-  let placedRug = null
-  let rugModelTemplate = null
+  let placedArt = null
+  let artModelTemplate = null
   const loader = new THREE.GLTFLoader()
-  
-  // Gesture tracking for pinch zoom and rotation
+
   let currentScale = 1
-  let currentRotation = 0
   let lastPinchDistance = 0
-  let lastRotationAngle = 0
   let isPinching = false
 
   // Preload the GLB model
@@ -125,29 +117,25 @@ const rugARScenePipelineModule = () => {
       loader.load(
         RUG_MODEL_URL,
         (gltf) => {
-          rugModelTemplate = gltf.scene
-          // Configure meshes for proper rendering
-          rugModelTemplate.traverse((child) => {
+          artModelTemplate = gltf.scene
+          artModelTemplate.traverse((child) => {
             if (child.isMesh) {
-              // Disable shadows to avoid dark patches on rug
               child.castShadow = false
               child.receiveShadow = false
-              // Make material double-sided for flat objects like rugs
               if (child.material) {
                 child.material.side = THREE.DoubleSide
-                // Ensure proper color rendering
                 child.material.needsUpdate = true
               }
             }
           })
-          console.log('Rug model preloaded successfully')
+          console.log('Art model preloaded successfully')
           resolve(gltf)
         },
         (progress) => {
           console.log('Loading model:', (progress.loaded / progress.total * 100).toFixed(0) + '%')
         },
         (error) => {
-          console.error('Error loading rug model:', error)
+          console.error('Error loading art model:', error)
           reject(error)
         }
       )
@@ -158,174 +146,131 @@ const rugARScenePipelineModule = () => {
     renderer.shadowMap.enabled = true
     renderer.shadowMap.type = THREE.PCFSoftShadowMap
 
-    // Use softer directional light from above
     const light = new THREE.DirectionalLight(0xffffff, 0.8)
-    light.position.set(0, 10, 0)  // Directly above for even lighting
-    light.castShadow = false  // Disable shadow casting
+    light.position.set(0, 10, 0)
+    light.castShadow = false
     scene.add(light)
 
-    // Add hemisphere light for more natural, even lighting
     const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1)
     hemiLight.position.set(0, 10, 0)
     scene.add(hemiLight)
 
-    // Increase ambient light for better visibility
     scene.add(new THREE.AmbientLight(0xffffff, 0.8))
 
-    surface = new THREE.Mesh(
-      new THREE.PlaneGeometry(100, 100, 1, 1),
-      new THREE.ShadowMaterial({
-        opacity: 0.3,
-      })
-    )
-    surface.rotateX(-Math.PI / 2)
-    surface.position.set(0, 0, 0)
-    surface.receiveShadow = true
-    scene.add(surface)
-
     camera.position.set(0, 1.6, 0)
-    
-    // Preload the model
+
     preloadModel()
   }
 
-  const createRugFromModel = () => {
-    if (!rugModelTemplate) {
+  const createArtFromModel = () => {
+    if (!artModelTemplate) {
       console.warn('Model not loaded yet')
       return null
     }
-    
-    // Clone the preloaded model
-    const rug = rugModelTemplate.clone()
-    
-    // Configure cloned meshes for proper rendering
-    rug.traverse((child) => {
+
+    const art = artModelTemplate.clone()
+
+    art.traverse((child) => {
       if (child.isMesh) {
-        // Disable shadows to avoid dark patches on rug
         child.castShadow = false
         child.receiveShadow = false
-        // Make material double-sided for flat objects like rugs
         if (child.material) {
           child.material.side = THREE.DoubleSide
           child.material.needsUpdate = true
         }
       }
     })
-    
-    return rug
+
+    return art
   }
 
-  const animateIn = (rug, pointX, pointZ) => {
+  const animateIn = (art, position, rotation) => {
     const scale = {...startScale}
 
-    rug.position.set(pointX, 0.01, pointZ)
-    rug.scale.set(scale.x, scale.y, scale.z)
-    
-    XR8.Threejs.xrScene().scene.add(rug)
+    art.position.set(position.x, position.y, position.z)
+    if (rotation) {
+      art.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w)
+    }
+    art.scale.set(scale.x, scale.y, scale.z)
+
+    XR8.Threejs.xrScene().scene.add(art)
 
     new TWEEN.Tween(scale)
       .to(endScale, animationMillis)
       .easing(TWEEN.Easing.Elastic.Out)
       .onUpdate(() => {
-        rug.scale.set(scale.x, scale.y, scale.z)
+        art.scale.set(scale.x, scale.y, scale.z)
       })
       .start()
   }
 
-  const placeRug = (pointX, pointZ) => {
-    // If rug already exists, just move it (reposition)
-    if (placedRug) {
-      placedRug.position.set(pointX, 0.01, pointZ)
+  const placeArt = (position, rotation) => {
+    if (placedArt) {
+      placedArt.position.set(position.x, position.y, position.z)
+      if (rotation) {
+        placedArt.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w)
+      }
       return
     }
-    
-    // First time placing - create the rug
-    const rug = createRugFromModel()
-    if (rug) {
-      placedRug = rug
-      // Reset scale tracking when placing new rug
+
+    const art = createArtFromModel()
+    if (art) {
+      placedArt = art
       currentScale = 1
-      animateIn(placedRug, pointX, pointZ)
-      // Hide tap indicator on first rug placement
+      animateIn(placedArt, position, rotation)
       hideTapIndicator()
     } else {
-      console.warn('Could not place rug - model not loaded')
+      console.warn('Could not place art - model not loaded')
     }
   }
 
-  // Get distance between two touch points
-  const getPinchDistance = (touches) => {
+  const getPinchDistance= (touches) => {
     const dx = touches[0].clientX - touches[1].clientX
     const dy = touches[0].clientY - touches[1].clientY
     return Math.sqrt(dx * dx + dy * dy)
   }
 
-  // Get rotation angle between two touch points
-  const getRotationAngle = (touches) => {
-    const dx = touches[1].clientX - touches[0].clientX
-    const dy = touches[1].clientY - touches[0].clientY
-    return Math.atan2(dy, dx)
-  }
-
-  // Handle touch start - place rug or start gesture
-  const touchStartHandler = (e) => {
+  const touchStartHandler= (e) => {
     if (!tapEnabled) {
       return
     }
 
-    // Prevent default browser behavior (scroll, zoom, etc.)
     e.preventDefault()
 
-    // Two finger touch - start pinch zoom and rotation
-    if (e.touches.length === 2 && placedRug) {
+    if (e.touches.length === 2 && placedArt) {
       isPinching = true
       lastPinchDistance = getPinchDistance(e.touches)
-      lastRotationAngle = getRotationAngle(e.touches)
       return
     }
 
-    // Single finger touch - tap to place/reposition rug
     if (e.touches.length === 1) {
-      const {camera} = XR8.Threejs.xrScene()
       const touch = e.touches[0]
-      const tapX = (touch.clientX / window.innerWidth) * 2 - 1
-      const tapY = -(touch.clientY / window.innerHeight) * 2 + 1
-      raycaster.setFromCamera(new THREE.Vector2(tapX, tapY), camera)
-      const intersects = raycaster.intersectObject(surface)
-      if (intersects.length > 0) {
-        // Place or reposition rug at tap location
-        placeRug(intersects[0].point.x, intersects[0].point.z)
+      const x = touch.clientX / window.innerWidth
+      const y = touch.clientY / window.innerHeight
+      const hitTestResults = XR8.XrController.hitTest(x, y, ['FEATURE_POINT'])
+      if (hitTestResults.length > 0) {
+        const hit = hitTestResults[0]
+        placeArt(hit.position, hit.rotation)
       }
     }
   }
 
-  // Handle touch move - pinch zoom and rotation
   const touchMoveHandler = (e) => {
-    if (!tapEnabled || !placedRug) {
+    if (!tapEnabled || !placedArt) {
       return
     }
 
     e.preventDefault()
 
-    // Handle two finger pinch zoom and rotation
     if (isPinching && e.touches.length === 2) {
-      // Pinch zoom
       const newDistance = getPinchDistance(e.touches)
       const scaleFactor = newDistance / lastPinchDistance
       currentScale = Math.max(0.3, Math.min(3, currentScale * scaleFactor))
-      placedRug.scale.set(currentScale, currentScale, currentScale)
+      placedArt.scale.set(currentScale, currentScale, currentScale)
       lastPinchDistance = newDistance
-
-      // Two finger rotation
-      const newAngle = getRotationAngle(e.touches)
-      const angleDelta = newAngle - lastRotationAngle
-      currentRotation += angleDelta
-      placedRug.rotation.y = currentRotation
-      lastRotationAngle = newAngle
     }
   }
 
-  // Handle touch end - reset gesture states
   const touchEndHandler = (e) => {
     if (e.touches.length < 2) {
       isPinching = false
