@@ -2,24 +2,17 @@
 // Self-hosted 8th Wall engine for World Effects (SLAM tracking)
 // Branding hidden via CSS
 
-/* globals XR8 XRExtras THREE TWEEN */
+/* globals XR8 XRExtras CoachingOverlay THREE TWEEN */
 
 // GLB model URL (Supabase)
 const RUG_MODEL_URL = 'https://dfcksvowcprcrpkpfptk.supabase.co/storage/v1/object/public/3d-models/models/2A0pQDoKVq/carpet_model_20260210_094217.glb'
 
-// Track if AR has been started
 let arStarted = false
-// Track if rug has been placed (to prevent hiding tap indicator on permission taps)
-let rugPlaced = false
-// Track if tap-to-place is enabled (delay to avoid permission dialog taps)
 let tapEnabled = false
 
-// Show preview page, hide AR view
 const showPreview = () => {
   document.getElementById('preview-page').style.display = 'flex'
   document.getElementById('ar-view').style.display = 'none'
-  
-  // Stop AR if it was running
   if (arStarted) {
     try {
       XR8.stop()
@@ -30,7 +23,6 @@ const showPreview = () => {
   }
 }
 
-// Show AR view, hide preview page
 const showARView = () => {
   document.getElementById('preview-page').style.display = 'none'
   document.getElementById('ar-view').style.display = 'block'
@@ -39,7 +31,6 @@ const showARView = () => {
 const createBackButton = () => {
   const existing = document.getElementById('back-btn-ar')
   if (existing) existing.remove()
-
   const btn = document.createElement('button')
   btn.id = 'back-btn-ar'
   btn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
@@ -67,7 +58,6 @@ const createBackButton = () => {
   return btn
 }
 
-// Show AR overlay and tap indicator when AR starts
 const showOverlay = () => {
   document.getElementById('overlay').style.display = 'block'
   setTimeout(() => {
@@ -88,7 +78,6 @@ const showTapIndicator = () => {
   document.getElementById('tap-indicator').style.display = 'flex'
 }
 
-// Hide tap indicator when rug is placed
 const hideTapIndicator = () => {
   const tapIndicator = document.getElementById('tap-indicator')
   if (tapIndicator) {
@@ -97,6 +86,23 @@ const hideTapIndicator = () => {
       tapIndicator.style.display = 'none'
     }, 300)
   }
+}
+
+let scaleLabelTimer = null
+const showScaleLabel = (percent) => {
+  const label = document.getElementById('scale-label')
+  if (!label) return
+  label.textContent = percent + '%'
+  label.style.opacity = '1'
+  label.classList.remove('fade-out')
+  clearTimeout(scaleLabelTimer)
+  scaleLabelTimer = setTimeout(() => {
+    label.classList.add('fade-out')
+    setTimeout(() => {
+      label.style.opacity = '0'
+      label.classList.remove('fade-out')
+    }, 300)
+  }, 1000)
 }
 
 const rugARScenePipelineModule = () => {
@@ -110,11 +116,20 @@ const rugARScenePipelineModule = () => {
   let artModelTemplate = null
   const loader = new THREE.GLTFLoader()
 
-  let currentScale = 1
-  let lastPinchDistance = 0
-  let isPinching = false
+  let scaleFactor = 1
+  const scaleMin = 0.1
+  const scaleMax = 5
+  let initialScale = {x: 1, y: 1, z: 1}
 
-  // Preload the GLB model
+  let isPinching = false
+  let startPinchDistance = 0
+  let lastPinchDistance = 0
+  let lastRotationAngle = 0
+
+  let touchStartPos = null
+  let touchStartTime = 0
+  let isDragging = false
+
   const preloadModel = () => {
     return new Promise((resolve, reject) => {
       loader.load(
@@ -170,9 +185,7 @@ const rugARScenePipelineModule = () => {
       console.warn('Model not loaded yet')
       return null
     }
-
     const art = artModelTemplate.clone()
-
     art.traverse((child) => {
       if (child.isMesh) {
         child.castShadow = false
@@ -183,19 +196,16 @@ const rugARScenePipelineModule = () => {
         }
       }
     })
-
     return art
   }
 
   const animateIn = (art, position, rotation) => {
     const scale = {...startScale}
-
     art.position.set(position.x, position.y, position.z)
     if (rotation) {
       art.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w)
     }
     art.scale.set(scale.x, scale.y, scale.z)
-
     XR8.Threejs.xrScene().scene.add(art)
 
     new TWEEN.Tween(scale)
@@ -203,6 +213,10 @@ const rugARScenePipelineModule = () => {
       .easing(TWEEN.Easing.Elastic.Out)
       .onUpdate(() => {
         art.scale.set(scale.x, scale.y, scale.z)
+      })
+      .onComplete(() => {
+        initialScale = {x: art.scale.x, y: art.scale.y, z: art.scale.z}
+        scaleFactor = 1
       })
       .start()
   }
@@ -215,11 +229,10 @@ const rugARScenePipelineModule = () => {
       }
       return
     }
-
     const art = createArtFromModel()
     if (art) {
       placedArt = art
-      currentScale = 1
+      scaleFactor = 1
       animateIn(placedArt, position, rotation)
       hideTapIndicator()
     } else {
@@ -227,50 +240,85 @@ const rugARScenePipelineModule = () => {
     }
   }
 
-  const getPinchDistance= (touches) => {
+  const getPinchDistance = (touches) => {
     const dx = touches[0].clientX - touches[1].clientX
     const dy = touches[0].clientY - touches[1].clientY
     return Math.sqrt(dx * dx + dy * dy)
   }
 
-  const touchStartHandler= (e) => {
-    if (!tapEnabled) {
-      return
-    }
+  const getRotationAngle = (touches) => {
+    return Math.atan2(
+      touches[1].clientY - touches[0].clientY,
+      touches[1].clientX - touches[0].clientX
+    )
+  }
 
+  const touchStartHandler = (e) => {
+    if (!tapEnabled) return
     e.preventDefault()
 
     if (e.touches.length === 2 && placedArt) {
       isPinching = true
-      lastPinchDistance = getPinchDistance(e.touches)
+      isDragging = false
+      startPinchDistance = getPinchDistance(e.touches)
+      lastPinchDistance = startPinchDistance
+      lastRotationAngle = getRotationAngle(e.touches)
       return
     }
 
     if (e.touches.length === 1) {
-      const touch = e.touches[0]
-      const x = touch.clientX / window.innerWidth
-      const y = touch.clientY / window.innerHeight
-      const hitTestResults = XR8.XrController.hitTest(x, y, ['FEATURE_POINT'])
-      if (hitTestResults.length > 0) {
-        const hit = hitTestResults[0]
-        placeArt(hit.position, hit.rotation)
-      }
+      touchStartPos = {x: e.touches[0].clientX, y: e.touches[0].clientY}
+      touchStartTime = Date.now()
+      isDragging = false
     }
   }
 
   const touchMoveHandler = (e) => {
-    if (!tapEnabled || !placedArt) {
+    if (!tapEnabled) return
+    e.preventDefault()
+
+    if (isPinching && e.touches.length === 2 && placedArt) {
+      const newDistance = getPinchDistance(e.touches)
+      const spreadChange = newDistance - lastPinchDistance
+      scaleFactor *= 1 + spreadChange / startPinchDistance
+      scaleFactor = Math.max(scaleMin, Math.min(scaleMax, scaleFactor))
+
+      if (scaleFactor >= 0.9 && scaleFactor <= 1.1) {
+        placedArt.scale.set(initialScale.x, initialScale.y, initialScale.z)
+        showScaleLabel(100)
+      } else {
+        placedArt.scale.set(
+          scaleFactor * initialScale.x,
+          scaleFactor * initialScale.y,
+          scaleFactor * initialScale.z
+        )
+        showScaleLabel(Math.round(scaleFactor * 100))
+      }
+      lastPinchDistance = newDistance
+
+      const newAngle = getRotationAngle(e.touches)
+      const angleDelta = newAngle - lastRotationAngle
+      placedArt.rotateY(angleDelta)
+      lastRotationAngle = newAngle
       return
     }
 
-    e.preventDefault()
+    if (e.touches.length === 1 && placedArt && touchStartPos) {
+      const dx = e.touches[0].clientX - touchStartPos.x
+      const dy = e.touches[0].clientY - touchStartPos.y
+      const dist = Math.sqrt(dx * dx + dy * dy)
 
-    if (isPinching && e.touches.length === 2) {
-      const newDistance = getPinchDistance(e.touches)
-      const scaleFactor = newDistance / lastPinchDistance
-      currentScale = Math.max(0.3, Math.min(3, currentScale * scaleFactor))
-      placedArt.scale.set(currentScale, currentScale, currentScale)
-      lastPinchDistance = newDistance
+      if (dist > 10) {
+        isDragging = true
+        const touch = e.touches[0]
+        const x = touch.clientX / window.innerWidth
+        const y = touch.clientY / window.innerHeight
+        const hitTestResults = XR8.XrController.hitTest(x, y, ['FEATURE_POINT'])
+        if (hitTestResults.length > 0) {
+          const hit = hitTestResults[0]
+          placedArt.position.set(hit.position.x, hit.position.y, hit.position.z)
+        }
+      }
     }
   }
 
@@ -278,14 +326,28 @@ const rugARScenePipelineModule = () => {
     if (e.touches.length < 2) {
       isPinching = false
     }
+    if (e.touches.length === 0 && touchStartPos) {
+      if (!isDragging && (Date.now() - touchStartTime) < 300) {
+        const x = touchStartPos.x / window.innerWidth
+        const y = touchStartPos.y / window.innerHeight
+        const hitTestResults = XR8.XrController.hitTest(x, y, ['FEATURE_POINT'])
+        if (hitTestResults.length > 0) {
+          const hit = hitTestResults[0]
+          placeArt(hit.position, hit.rotation)
+        }
+      }
+      touchStartPos = null
+      isDragging = false
+    }
   }
+
+  let coachingComplete = false
 
   return {
     name: 'rug-ar',
 
     onStart: ({canvas}) => {
       const {scene, camera, renderer} = XR8.Threejs.xrScene()
-
       initXrScene({scene, camera, renderer})
 
       canvas.addEventListener('touchstart', touchStartHandler, true)
@@ -304,19 +366,26 @@ const rugARScenePipelineModule = () => {
       })
 
       showOverlay()
-      showTapIndicator()
+    },
 
-      setTimeout(() => {
+    onUpdate: ({processCpuResult}) => {
+      if (!coachingComplete && processCpuResult.reality && processCpuResult.reality.trackingStatus === 'NORMAL') {
+        coachingComplete = true
         tapEnabled = true
-        console.log('Tap-to-place enabled')
-      }, 1000)
+        showTapIndicator()
+        console.log('Coaching complete - tap-to-place enabled')
+      }
     },
   }
 }
 
-// Initialize when XR8 is loaded
 const onxrloaded = () => {
   XR8.XrController.configure({scale: 'absolute'})
+
+  CoachingOverlay.configure({
+    animationColor: '#ffffff',
+    promptText: 'Move your phone slowly to detect surfaces',
+  })
 
   XR8.addCameraPipelineModules([
     XR8.GlTextureRenderer.pipelineModule(),
@@ -326,14 +395,13 @@ const onxrloaded = () => {
     XRExtras.FullWindowCanvas.pipelineModule(),
     XRExtras.Loading.pipelineModule(),
     XRExtras.RuntimeError.pipelineModule(),
+    CoachingOverlay.pipelineModule(),
     rugARScenePipelineModule(),
   ])
 
-  // Start the AR experience
   XR8.run({canvas: document.getElementById('camerafeed')})
 }
 
-// Start AR experience when button is clicked
 const startAR = () => {
   showARView()
   XRExtras.Loading.showLoading({onxrloaded})
@@ -362,8 +430,6 @@ document.addEventListener('DOMContentLoaded', () => {
   arBtn.disabled = true
   arBtn.classList.add('loading')
   arBtn.textContent = 'Loading AR...'
-
   arBtn.addEventListener('click', startAR)
-
   waitForARReady()
 })

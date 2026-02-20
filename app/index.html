@@ -37,12 +37,14 @@
     <!-- XR Extras - needed for proper initialization (UI hidden via CSS) -->
  	   <script src="https://cdn.8thwall.com/web/xrextras/xrextras.js"></script>
 
-	
+	   <!-- Coaching Overlay for Absolute Scale -->
+	   <script src="https://cdn.8thwall.com/web/coaching-overlay/coaching-overlay.js"></script>
+
 	   <!-- 8th Wall Self-Hosted Engine - World Effects (SLAM) -->
 	   <script async src="./xr.js" data-preload-chunks="slam"></script>
 	
 	   <!-- Client code -->
-	   <script src="index.js?v=10"></script>
+	   <script src="index.js?v=11"></script>
 	 </head>
 	
 	 <body>
@@ -77,12 +79,15 @@
 	   </div>
 
 	
-	   <!-- Tap gesture indicator - outside ar-view to avoid z-index conflicts with canvas/XRExtras -->
-	   <div id="tap-indicator" style="display: none;">
-	     <div class="tap-circle tap-circle-outer"></div>
-	     <div class="tap-circle tap-circle-inner"></div>
-	     <span class="tap-text">Tap on wall to place</span>
-	   </div>
+    <!-- Tap gesture indicator - outside ar-view to avoid z-index conflicts with canvas/XRExtras -->
+ 	   <div id="tap-indicator" style="display: none;">
+ 	     <div class="tap-circle tap-circle-outer"></div>
+ 	     <div class="tap-circle tap-circle-inner"></div>
+ 	     <span class="tap-text">Tap on wall to place</span>
+ 	   </div>
+
+ 	   <!-- Scale percentage label -->
+ 	   <div id="scale-label" style="opacity: 0;"></div>
 	 </body>
 	</html>
 

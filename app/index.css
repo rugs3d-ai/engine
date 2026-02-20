@@ -237,3 +237,23 @@
 	#tap-indicator.hidden {
 	 display: none !important;
 	}
+
+	#scale-label {
+	 position: fixed;
+	 top: 15%;
+	 left: 50%;
+	 transform: translateX(-50%);
+	 color: white;
+	 font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
+	 font-size: 1.5em;
+	 font-weight: bold;
+	 text-shadow: rgb(0 0 0 / 50%) 0px 0px 6px;
+	 z-index: 10001;
+	 pointer-events: none;
+	 transition: opacity 0.3s ease;
+	}
+
+	#scale-label.fade-out {
+	 opacity: 0 !important;
+	 transition: opacity 0.3s ease;
+	}
