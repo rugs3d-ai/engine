@@ -2,7 +2,7 @@
 // Self-hosted 8th Wall engine for World Effects (SLAM tracking)
 // Branding hidden via CSS
 
-/* globals XR8 XRExtras CoachingOverlay THREE TWEEN */
+/* globals XR8 XRExtras THREE TWEEN */
 
 // GLB model URL (Supabase)
 const RUG_MODEL_URL = 'https://dfcksvowcprcrpkpfptk.supabase.co/storage/v1/object/public/3d-models/models/2A0pQDoKVq/carpet_model_20260210_094217.glb'
@@ -280,8 +280,6 @@ const rugARScenePipelineModule = () => {
     }
   }
 
-  let coachingComplete = false
-
   return {
     name: 'rug-ar',
 
@@ -306,15 +304,12 @@ const rugARScenePipelineModule = () => {
       })
 
       showOverlay()
-    },
+      showTapIndicator()
 
-    onUpdate: ({processCpuResult}) => {
-      if (!coachingComplete && processCpuResult.reality && processCpuResult.reality.trackingStatus === 'NORMAL') {
-        coachingComplete = true
+      setTimeout(() => {
         tapEnabled = true
-        showTapIndicator()
-        console.log('Coaching complete - tap-to-place enabled')
-      }
+        console.log('Tap-to-place enabled')
+      }, 1000)
     },
   }
 }
@@ -322,11 +317,6 @@ const rugARScenePipelineModule = () => {
 // Initialize when XR8 is loaded
 const onxrloaded = () => {
   XR8.XrController.configure({scale: 'absolute'})
-
-  CoachingOverlay.configure({
-    animationColor: '#ffffff',
-    promptText: 'Move your phone slowly to detect surfaces',
-  })
 
   XR8.addCameraPipelineModules([
     XR8.GlTextureRenderer.pipelineModule(),
@@ -336,7 +326,6 @@ const onxrloaded = () => {
     XRExtras.FullWindowCanvas.pipelineModule(),
     XRExtras.Loading.pipelineModule(),
     XRExtras.RuntimeError.pipelineModule(),
-    CoachingOverlay.pipelineModule(),
     rugARScenePipelineModule(),
   ])
 
