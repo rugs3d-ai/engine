@@ -354,11 +354,12 @@ const enableARButton = () => {
   const btn = document.getElementById('view-ar-btn')
   btn.disabled = false
   btn.classList.remove('loading')
+  btn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> View in AR'
 }
 
 const waitForARReady = () => {
   const check = () => {
-    if (typeof XRExtras !== 'undefined' && typeof XR8 !== 'undefined' && typeof CoachingOverlay !== 'undefined') {
+    if (typeof XRExtras !== 'undefined' && typeof XR8 !== 'undefined') {
       enableARButton()
     } else {
       setTimeout(check, 200)
@@ -371,6 +372,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const arBtn = document.getElementById('view-ar-btn')
   arBtn.disabled = true
   arBtn.classList.add('loading')
+  arBtn.textContent = 'Loading AR...'
 
   arBtn.addEventListener('click', startAR)
 

@@ -48,13 +48,31 @@
 	}
 	
 	.view-ar-button.loading,
-	.view-ar-button:disabled {
-	 background: #a878e8;
-	 cursor: not-allowed;
-	 box-shadow: 0 4px 20px rgba(121, 22, 255, 0.2);
-	 pointer-events: none;
-	 opacity: 0.7;
-	}
+		.view-ar-button:disabled {
+		 background: #a878e8;
+		 cursor: not-allowed;
+		 box-shadow: 0 4px 20px rgba(121, 22, 255, 0.2);
+		 pointer-events: none;
+		 opacity: 0.7;
+		}
+
+		.view-ar-button.loading svg {
+		 display: none;
+		}
+
+		.view-ar-button.loading::before {
+		 content: '';
+		 width: 20px;
+		 height: 20px;
+		 border: 2px solid rgba(255, 255, 255, 0.3);
+		 border-top-color: white;
+		 border-radius: 50%;
+		 animation: btn-spin 0.6s linear infinite;
+		}
+
+		@keyframes btn-spin {
+		 to { transform: rotate(360deg); }
+		}
 
 	.view-ar-button:hover:not(:disabled) {
 	 background: #6a12e6;
