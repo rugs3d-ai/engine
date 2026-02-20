@@ -117,6 +117,7 @@ const rugARScenePipelineModule = () => {
   const loader = new THREE.GLTFLoader()
 
   let scaleFactor = 1
+  let targetScaleFactor = 1
   const scaleMin = 0.1
   const scaleMax = 5
   let initialScale = {x: 1, y: 1, z: 1}
@@ -129,6 +130,12 @@ const rugARScenePipelineModule = () => {
   let touchStartPos = null
   let touchStartTime = 0
   let isDragging = false
+
+  const dragTarget = new THREE.Vector3()
+  const dragLerpFactor = 0.25
+  const scaleLerpFactor = 0.3
+  let lastHitTestTime = 0
+  const hitTestInterval = 33
 
   const preloadModel = () => {
     return new Promise((resolve, reject) => {
@@ -217,6 +224,7 @@ const rugARScenePipelineModule = () => {
       .onComplete(() => {
         initialScale = {x: art.scale.x, y: art.scale.y, z: art.scale.z}
         scaleFactor = 1
+        targetScaleFactor = 1
       })
       .start()
   }
@@ -233,6 +241,7 @@ const rugARScenePipelineModule = () => {
     if (art) {
       placedArt = art
       scaleFactor = 1
+      targetScaleFactor = 1
       animateIn(placedArt, position, rotation)
       hideTapIndicator()
     } else {
@@ -280,25 +289,17 @@ const rugARScenePipelineModule = () => {
     if (isPinching && e.touches.length === 2 && placedArt) {
       const newDistance = getPinchDistance(e.touches)
       const spreadChange = newDistance - lastPinchDistance
-      scaleFactor *= 1 + spreadChange / startPinchDistance
-      scaleFactor = Math.max(scaleMin, Math.min(scaleMax, scaleFactor))
-
-      if (scaleFactor >= 0.9 && scaleFactor <= 1.1) {
-        placedArt.scale.set(initialScale.x, initialScale.y, initialScale.z)
-        showScaleLabel(100)
-      } else {
-        placedArt.scale.set(
-          scaleFactor * initialScale.x,
-          scaleFactor * initialScale.y,
-          scaleFactor * initialScale.z
-        )
-        showScaleLabel(Math.round(scaleFactor * 100))
+      if (Math.abs(spreadChange) > 1) {
+        targetScaleFactor *= 1 + spreadChange / startPinchDistance
+        targetScaleFactor = Math.max(scaleMin, Math.min(scaleMax, targetScaleFactor))
       }
       lastPinchDistance = newDistance
 
       const newAngle = getRotationAngle(e.touches)
       const angleDelta = newAngle - lastRotationAngle
-      placedArt.rotateY(angleDelta)
+      if (Math.abs(angleDelta) > 0.005) {
+        placedArt.rotateY(angleDelta)
+      }
       lastRotationAngle = newAngle
       return
     }
@@ -310,13 +311,16 @@ const rugARScenePipelineModule = () => {
 
       if (dist > 10) {
         isDragging = true
+        const now = Date.now()
+        if (now - lastHitTestTime < hitTestInterval) return
+        lastHitTestTime = now
         const touch = e.touches[0]
         const x = touch.clientX / window.innerWidth
         const y = touch.clientY / window.innerHeight
         const hitTestResults = XR8.XrController.hitTest(x, y, ['FEATURE_POINT'])
         if (hitTestResults.length > 0) {
           const hit = hitTestResults[0]
-          placedArt.position.set(hit.position.x, hit.position.y, hit.position.z)
+          dragTarget.set(hit.position.x, hit.position.y, hit.position.z)
         }
       }
     }
@@ -357,6 +361,29 @@ const rugARScenePipelineModule = () => {
       const animate = (time) => {
         requestAnimationFrame(animate)
         TWEEN.update(time)
+
+        if (placedArt) {
+          if (isDragging) {
+            placedArt.position.lerp(dragTarget, dragLerpFactor)
+          }
+
+          if (isPinching) {
+            scaleFactor += (targetScaleFactor - scaleFactor) * scaleLerpFactor
+            let displayPercent
+            if (targetScaleFactor >= 0.9 && targetScaleFactor <= 1.1) {
+              placedArt.scale.set(initialScale.x, initialScale.y, initialScale.z)
+              displayPercent = 100
+            } else {
+              placedArt.scale.set(
+                scaleFactor * initialScale.x,
+                scaleFactor * initialScale.y,
+                scaleFactor * initialScale.z
+              )
+              displayPercent = Math.round(scaleFactor * 100)
+            }
+            showScaleLabel(displayPercent)
+          }
+        }
       }
       animate()
 
