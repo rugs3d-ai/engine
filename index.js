@@ -72,7 +72,7 @@ AFRAME.registerComponent('wall-place', {
       this.cameraEl = document.getElementById('camera')
       this.threeCamera = this.cameraEl.getObject3D('camera')
       this.phase = 'floor'
-      setTapText('Tap the base of the wall')
+      setTapText('Align corner with wall base & tap')
       showTapIndicator()
       document.getElementById('wall-marker').setAttribute('visible', 'true')
       dbg('Phase: floor - point at wall base')
@@ -139,6 +139,13 @@ AFRAME.registerComponent('wall-place', {
         const marker = document.getElementById('wall-marker')
         marker.object3D.position.lerp(hits[0].point, 0.4)
         marker.object3D.rotation.y = this.cameraEl.object3D.rotation.y
+
+        const screenPos = marker.object3D.position.clone().project(this.threeCamera)
+        const tapEl = document.getElementById('tap-indicator')
+        if (tapEl) {
+          tapEl.style.left = ((screenPos.x * 0.5 + 0.5) * 100) + '%'
+          tapEl.style.top = ((-screenPos.y * 0.5 + 0.5) * 100) + '%'
+        }
       }
     } else if (this.phase === 'wall' && this.wallEl) {
       this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.threeCamera)

@@ -86,16 +86,11 @@
         </a-entity>
         <a-light type="ambient" intensity="0.8"></a-light>
 
-        <!-- Wall base marker (follows gaze on floor, shown during floor phase) -->
-        <a-box
-          id="wall-marker"
-          visible="false"
-          color="#7916ff"
-          width="0.5"
-          depth="0.1"
-          height="0.02"
-          material="opacity: 0.7">
-        </a-box>
+        <!-- Wall base marker - L-shaped hinge (align corner with wall-floor corner) -->
+        <a-entity id="wall-marker" visible="false">
+          <a-box color="#7916ff" width="0.5" height="0.02" depth="0.25" material="opacity: 0.7" position="0 0.01 0.125"></a-box>
+          <a-box color="#7916ff" width="0.5" height="0.25" depth="0.02" material="opacity: 0.7" position="0 0.125 -0.01"></a-box>
+        </a-entity>
 
         <!-- Wall art entity (hidden until wall is created) with gesture components -->
         <a-entity
@@ -140,7 +135,7 @@
     <div id="tap-indicator" style="display: none;">
       <div class="tap-circle tap-circle-outer"></div>
       <div class="tap-circle tap-circle-inner"></div>
-      <span class="tap-text">Tap the base of the wall</span>
+      <span class="tap-text">Align corner with wall base & tap</span>
     </div>
   </body>
 </html>
