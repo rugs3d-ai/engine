@@ -61,7 +61,7 @@
         xrextras-runtime-error
         xrweb="scale: absolute"
         renderer="colorManagement: true"
-        wall-place>
+        ar-place>
 
         <a-assets>
           <a-asset-item
@@ -90,6 +90,13 @@
         <a-entity id="wall-marker" visible="false">
           <a-plane width="0.6" height="0.4" rotation="-90 0 0" position="0 0.003 0.2" grid-material="type: floor"></a-plane>
           <a-plane width="0.6" height="0.4" position="0 0.2 -0.003" grid-material="type: wall"></a-plane>
+        </a-entity>
+
+        <!-- Floor marker - flat pulsating grid that follows gaze on ground -->
+        <a-entity id="floor-marker" visible="false">
+          <a-plane width="0.8" height="0.8" rotation="-90 0 0" position="0 0 0" grid-material="type: floor"
+            animation="property: scale; from: 0.9 0.9 0.9; to: 1.1 1.1 1.1; dur: 1000; easing: easeInOutSine; loop: true; dir: alternate">
+          </a-plane>
         </a-entity>
 
         <!-- Wall art entity (hidden until wall is created) with gesture components -->
@@ -127,6 +134,12 @@
         <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </button>
+
+    <!-- Mode toggle buttons -->
+    <div id="mode-toggle" style="display: none;">
+      <button class="mode-btn active" data-mode="wall">Wall</button>
+      <button class="mode-btn" data-mode="floor">Floor</button>
+    </div>
 
     <!-- Crosshair for wall aiming (shown during wall phase) -->
     <div id="crosshair" style="display: none;"></div>

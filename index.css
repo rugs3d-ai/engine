@@ -195,6 +195,38 @@ img[src*="8thwall"],
   display: none !important;
 }
 
+/* Mode toggle buttons */
+#mode-toggle {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0;
+  z-index: 10000;
+  border-radius: 25px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+}
+
+.mode-btn {
+  padding: 12px 28px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: background 0.2s ease;
+}
+
+.mode-btn.active {
+  background: #7916ff;
+  color: white;
+}
+
 /* Crosshair for wall aiming phase */
 #crosshair {
   position: fixed;

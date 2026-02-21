@@ -110,8 +110,9 @@ AFRAME.registerComponent('configure-rug-material', {
   },
 })
 
-AFRAME.registerComponent('wall-place', {
+AFRAME.registerComponent('ar-place', {
   init() {
+    this.mode = 'wall'
     this.phase = 'waiting'
     this.raycaster = new THREE.Raycaster()
     this.cameraEl = null
@@ -122,11 +123,9 @@ AFRAME.registerComponent('wall-place', {
     this.el.addEventListener('realityready', () => {
       this.cameraEl = document.getElementById('camera')
       this.threeCamera = this.cameraEl.getObject3D('camera')
-      this.phase = 'floor'
-      setTapText('Align corner with wall base & tap')
-      showTapIndicator()
-      document.getElementById('wall-marker').setAttribute('visible', 'true')
-      dbg('Phase: floor - point at wall base')
+
+      document.getElementById('mode-toggle').style.display = 'flex'
+      this.startMode(this.mode)
 
       let touchStart = 0
       this.el.canvas.addEventListener('touchstart', (e) => {
@@ -136,25 +135,93 @@ AFRAME.registerComponent('wall-place', {
         }
       })
       this.el.canvas.addEventListener('touchmove', (e) => {
-        if (!this.dragging || e.touches.length !== 1 || !this.wallEl) return
+        if (!this.dragging || e.touches.length !== 1) return
         const touch = e.touches[0]
         const x = (touch.clientX / window.innerWidth) * 2 - 1
         const y = -(touch.clientY / window.innerHeight) * 2 + 1
         this.raycaster.setFromCamera(new THREE.Vector2(x, y), this.threeCamera)
-        const hits = this.raycaster.intersectObject(this.wallEl.object3D, true)
-        if (hits.length > 0) {
-          const art = document.getElementById('placed-rug')
-          art.object3D.position.lerp(hits[0].point, 0.5)
+        if (this.mode === 'wall' && this.wallEl) {
+          const hits = this.raycaster.intersectObject(this.wallEl.object3D, true)
+          if (hits.length > 0) {
+            document.getElementById('placed-rug').object3D.position.lerp(hits[0].point, 0.5)
+          }
+        } else if (this.mode === 'floor') {
+          const ground = document.getElementById('ground')
+          if (!ground) return
+          const hits = this.raycaster.intersectObject(ground.object3D, true)
+          if (hits.length > 0) {
+            const art = document.getElementById('placed-rug')
+            const pt = hits[0].point
+            art.object3D.position.lerp(new THREE.Vector3(pt.x, 0, pt.z), 0.5)
+          }
         }
       })
       this.el.canvas.addEventListener('touchend', (e) => {
         this.dragging = false
         if (e.changedTouches.length === 1 && Date.now() - touchStart < 400) {
-          if (this.phase === 'floor') this.createWall()
-          else if (this.phase === 'wall') this.lockArt()
+          this.handleTap()
         }
       })
     })
+  },
+
+  startMode(mode) {
+    this.mode = mode
+    this.phase = 'scanning'
+
+    const art = document.getElementById('placed-rug')
+    art.setAttribute('visible', 'false')
+    art.object3D.position.set(0, -999, 0)
+    art.setAttribute('scale', '1 1 1')
+    art.removeAttribute('animation')
+
+    const oldWall = document.getElementById('virtual-wall')
+    if (oldWall) oldWall.parentNode.removeChild(oldWall)
+    this.wallEl = null
+
+    document.getElementById('wall-marker').setAttribute('visible', 'false')
+    document.getElementById('floor-marker').setAttribute('visible', 'false')
+    document.getElementById('crosshair').style.display = 'none'
+    hideTapIndicator()
+
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === mode)
+    })
+
+    if (mode === 'wall') {
+      document.getElementById('wall-marker').setAttribute('visible', 'true')
+      setTapText('Align corner with wall base & tap')
+      showTapIndicator()
+    } else {
+      document.getElementById('floor-marker').setAttribute('visible', 'true')
+    }
+
+    dbg('Mode: ' + mode + ', scanning')
+  },
+
+  handleTap() {
+    if (this.phase === 'scanning') {
+      if (this.mode === 'wall') this.createWall()
+      else this.placeOnFloor()
+    } else if (this.phase === 'wall-aim') {
+      this.lockArt()
+    }
+  },
+
+  placeOnFloor() {
+    const marker = document.getElementById('floor-marker')
+    const art = document.getElementById('placed-rug')
+
+    const mPos = marker.object3D.position
+    art.object3D.position.set(mPos.x, 0, mPos.z)
+    art.object3D.rotation.y = this.cameraEl.object3D.rotation.y
+    art.setAttribute('visible', 'true')
+    art.setAttribute('scale', '0.01 0.01 0.01')
+    art.setAttribute('animation', 'property: scale; to: 1 1 1; dur: 400; easing: easeOutQuad')
+
+    marker.setAttribute('visible', 'false')
+    this.phase = 'placed'
+    dbg('Floor: placed')
   },
 
   createWall() {
@@ -178,17 +245,17 @@ AFRAME.registerComponent('wall-place', {
     art.setAttribute('visible', 'true')
     art.setAttribute('scale', '1 1 1')
 
-    this.phase = 'wall'
+    this.phase = 'wall-aim'
     setTapText('Tap to place on wall')
     document.getElementById('crosshair').style.display = 'block'
-    dbg('Phase: wall - aim at wall to position art')
+    dbg('Wall: aim at wall to position art')
   },
 
   lockArt() {
     this.phase = 'placed'
     hideTapIndicator()
     document.getElementById('crosshair').style.display = 'none'
-    dbg('Phase: placed - art locked, gestures active')
+    dbg('Wall: placed')
   },
 
   tick() {
@@ -197,26 +264,33 @@ AFRAME.registerComponent('wall-place', {
       return
     }
 
-    if (this.phase === 'floor') {
+    if (this.phase === 'scanning') {
       this.raycaster.setFromCamera(new THREE.Vector2(0, -0.5), this.threeCamera)
       const ground = document.getElementById('ground')
       if (!ground) return
       const hits = this.raycaster.intersectObject(ground.object3D, true)
       if (hits.length > 0) {
-        const marker = document.getElementById('wall-marker')
-        marker.object3D.position.lerp(hits[0].point, 0.4)
-        marker.object3D.rotation.y = this.cameraEl.object3D.rotation.y
+        if (this.mode === 'wall') {
+          const marker = document.getElementById('wall-marker')
+          marker.object3D.position.lerp(hits[0].point, 0.4)
+          marker.object3D.rotation.y = this.cameraEl.object3D.rotation.y
 
-        const wallCenter = marker.object3D.position.clone()
-        wallCenter.y += 0.2
-        const screenPos = wallCenter.project(this.threeCamera)
-        const tapEl = document.getElementById('tap-indicator')
-        if (tapEl) {
-          tapEl.style.left = ((screenPos.x * 0.5 + 0.5) * 100) + '%'
-          tapEl.style.top = ((-screenPos.y * 0.5 + 0.5) * 100) + '%'
+          const wallCenter = marker.object3D.position.clone()
+          wallCenter.y += 0.2
+          const screenPos = wallCenter.project(this.threeCamera)
+          const tapEl = document.getElementById('tap-indicator')
+          if (tapEl) {
+            tapEl.style.left = ((screenPos.x * 0.5 + 0.5) * 100) + '%'
+            tapEl.style.top = ((-screenPos.y * 0.5 + 0.5) * 100) + '%'
+          }
+        } else {
+          const marker = document.getElementById('floor-marker')
+          const pt = hits[0].point
+          marker.object3D.position.lerp(new THREE.Vector3(pt.x, 0.003, pt.z), 0.4)
+          marker.object3D.rotation.y = this.cameraEl.object3D.rotation.y
         }
       }
-    } else if (this.phase === 'wall' && this.wallEl) {
+    } else if (this.phase === 'wall-aim' && this.wallEl) {
       this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.threeCamera)
       const hits = this.raycaster.intersectObject(this.wallEl.object3D, true)
       if (hits.length > 0) {
@@ -246,6 +320,15 @@ window.onload = () => {
 
   document.getElementById('back-btn').addEventListener('click', () => {
     window.location.reload()
+  })
+
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const scene = document.getElementById('ar-scene')
+      if (scene && scene.components['ar-place']) {
+        scene.components['ar-place'].startMode(btn.dataset.mode)
+      }
+    })
   })
 
   const mv = document.getElementById('model-viewer')
