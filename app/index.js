@@ -492,11 +492,13 @@ const rugARScenePipelineModule = () => {
             const tempVec = new THREE.Vector3()
             placedArt.getWorldPosition(tempVec)
             const dist = cam.position.distanceTo(tempVec)
-            const spriteS = dist * 0.12
+            const parentS = placedArt.scale.x / initialScale.x
+            const inv = 1 / Math.max(parentS, 0.01)
+            const spriteS = dist * 0.12 * inv
             dimElements.sprites.forEach((sprite) => {
               sprite.scale.set(spriteS, spriteS * 0.25, 1)
             })
-            const stripScale = Math.max(1, dist * 0.8)
+            const stripScale = Math.max(1, dist * 0.8) * inv
             dimElements.strips.forEach((mesh) => {
               mesh.scale.y = stripScale
             })
