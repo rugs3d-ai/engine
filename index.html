@@ -30,7 +30,7 @@
     <div id="preview-page">
       <model-viewer
         id="model-viewer"
-                                src="https://sewcrqgjitpwnfjxnkns.supabase.co/storage/v1/object/public/carpet-images/77de5373-12d7-4c05-97a5-6b12b076480e/models/carpet-3d-IMG_1878-mode2-1766757200493.glb"
+                                src="./carpet_model_20260210_094217.glb"
                         alt="3D Wall Art Preview"
         camera-controls
         touch-action="pan-y"
@@ -66,7 +66,7 @@
         <a-assets>
           <a-asset-item
             id="rugModel"
-                                          src="https://sewcrqgjitpwnfjxnkns.supabase.co/storage/v1/object/public/carpet-images/77de5373-12d7-4c05-97a5-6b12b076480e/models/carpet-3d-IMG_1878-mode2-1766757200493.glb">
+                                          src="./carpet_model_20260210_094217.glb">
                               </a-asset-item>
         </a-assets>
 
@@ -90,9 +90,9 @@
         <a-entity id="wall-marker" visible="false">
           <a-plane width="0.6" height="0.4" rotation="-90 0 0" position="0 0.003 0.2" grid-material="type: floor"></a-plane>
           <a-plane width="0.6" height="0.4" position="0 0.2 -0.003" grid-material="type: wall"></a-plane>
-          <a-text value="Align with wall\ncorner & Tap" align="center" color="white" width="0.45" position="0 0.2 -0.015"
-            animation="property: scale; from: 0.92 0.92 0.92; to: 1.08 1.08 1.08; dur: 1200; easing: easeInOutSine; loop: true; dir: alternate">
-          </a-text>
+          <a-plane width="0.55" height="0.22" position="0 0.22 -0.02" material="color: #000; transparent: true; opacity: 0.35; side: double"></a-plane>
+          <a-entity position="0 0.22 -0.021" text="value: Align with wall\ncorner & Tap; align: center; color: #fff; width: 2.4; wrapCount: 18; baseline: center; anchor: center; opacity: 1"
+            animation="property: scale; from: 0.92 0.92 0.92; to: 1.08 1.08 1.08; dur: 1200; easing: easeInOutSine; loop: true; dir: alternate"></a-entity>
         </a-entity>
 
         <!-- Floor marker - flat pulsating grid that follows gaze on ground -->
@@ -100,9 +100,9 @@
           <a-plane width="0.8" height="0.8" rotation="-90 0 0" position="0 0 0" grid-material="type: floor"
             animation="property: scale; from: 0.9 0.9 0.9; to: 1.1 1.1 1.1; dur: 1000; easing: easeInOutSine; loop: true; dir: alternate">
           </a-plane>
-          <a-text value="Tap to place" align="center" color="white" width="0.7" rotation="-90 0 0" position="0 0.01 0"
-            animation="property: scale; from: 0.9 0.9 0.9; to: 1.1 1.1 1.1; dur: 1000; easing: easeInOutSine; loop: true; dir: alternate">
-          </a-text>
+          <a-plane width="0.55" height="0.16" rotation="-90 0 0" position="0 0.008 0" material="color: #000; transparent: true; opacity: 0.25; side: double"></a-plane>
+          <a-entity rotation="-90 0 0" position="0 0.01 0" text="value: Tap to place; align: center; color: #fff; width: 3.0; wrapCount: 18; baseline: center; anchor: center; opacity: 1"
+            animation="property: scale; from: 0.9 0.9 0.9; to: 1.1 1.1 1.1; dur: 1000; easing: easeInOutSine; loop: true; dir: alternate"></a-entity>
         </a-entity>
 
         <!-- Wall art entity (hidden until wall is created) with gesture components -->
