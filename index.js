@@ -216,7 +216,9 @@ AFRAME.registerComponent('wall-place', {
         marker.object3D.position.lerp(hits[0].point, 0.4)
         marker.object3D.rotation.y = this.cameraEl.object3D.rotation.y
 
-        const screenPos = marker.object3D.position.clone().project(this.threeCamera)
+        const wallCenter = marker.object3D.position.clone()
+        wallCenter.y += 0.2
+        const screenPos = wallCenter.project(this.threeCamera)
         const tapEl = document.getElementById('tap-indicator')
         if (tapEl) {
           tapEl.style.left = ((screenPos.x * 0.5 + 0.5) * 100) + '%'
