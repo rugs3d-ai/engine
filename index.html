@@ -9,20 +9,25 @@
     <title>Rugs3D - AR Experience</title>
     <link rel="stylesheet" type="text/css" href="index.css">
 
+    <link rel="preconnect" href="https://cdn.8thwall.com" crossorigin>
+    <link rel="preconnect" href="https://ajax.googleapis.com" crossorigin>
+    <link rel="dns-prefetch" href="//cdn.8thwall.com">
+    <link rel="dns-prefetch" href="//ajax.googleapis.com">
+
     <!-- Google Model Viewer for 3D preview -->
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
 
     <!-- 8-Frame: 8th Wall's patched A-Frame (includes Three.js) -->
-    <script src="//cdn.8thwall.com/web/aframe/8frame-1.4.1.min.js"></script>
+    <script defer src="//cdn.8thwall.com/web/aframe/8frame-1.4.1.min.js"></script>
 
     <!-- XRExtras: gesture detector, loading screen, permissions handling -->
-    <script src="https://cdn.8thwall.com/web/xrextras/xrextras.js"></script>
+    <script defer src="https://cdn.8thwall.com/web/xrextras/xrextras.js"></script>
 
     <!-- 8th Wall Self-Hosted Engine - World Effects (SLAM) -->
     <script async src="./xr.js" data-preload-chunks="slam"></script>
 
     <!-- Client code (A-Frame components + page logic) -->
-    <script src="index.js"></script>
+    <script defer src="index.js"></script>
   </head>
 
   <body>
