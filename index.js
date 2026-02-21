@@ -244,7 +244,7 @@ AFRAME.registerComponent('ar-place', {
     art.setAttribute('scale', '1 1 1')
 
     this.phase = 'wall-aim'
-    setTapText('Position & tap')
+    setTapText('Tap to place')
     showTapIndicator()
     document.getElementById('crosshair').style.display = 'block'
     dbg('Wall: aim at wall to position art')
