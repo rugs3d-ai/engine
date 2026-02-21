@@ -216,6 +216,40 @@ const createDimensionArrows = (artGroup, localBbox) => {
   return {sprites: [wSprite, hSprite], strips}
 }
 
+const createDimToggle = (onToggle) => {
+  const existing = document.getElementById('dim-toggle-btn')
+  if (existing) existing.remove()
+  const btn = document.createElement('button')
+  btn.id = 'dim-toggle-btn'
+  btn.textContent = 'Hide Markers'
+  btn.setAttribute('style', [
+    'position:fixed',
+    'bottom:40px',
+    'right:20px',
+    'z-index:2147483647',
+    'padding:10px 18px',
+    'display:flex',
+    'align-items:center',
+    'justify-content:center',
+    'background:rgba(0,0,0,0.7)',
+    'border:1px solid rgba(255,255,255,0.3)',
+    'border-radius:25px',
+    'cursor:pointer',
+    'color:#fff',
+    'font-size:13px',
+    'font-weight:600',
+    'font-family:-apple-system,BlinkMacSystemFont,sans-serif',
+    'pointer-events:auto',
+    'backdrop-filter:blur(8px)',
+    '-webkit-backdrop-filter:blur(8px)',
+  ].join(' !important;') + ' !important')
+  btn.addEventListener('click', () => {
+    onToggle()
+  })
+  document.body.appendChild(btn)
+  return btn
+}
+
 const rugARScenePipelineModule = () => {
   const startScale = new THREE.Vector3(0.01, 0.01, 0.01)
   const endScale = new THREE.Vector3(1, 1, 1)
@@ -227,6 +261,7 @@ const rugARScenePipelineModule = () => {
   let artModelTemplate = null
   let modelLoaded = false
   let dimElements = null
+  let dimVisible = true
   const loader = new THREE.GLTFLoader()
 
   let scaleFactor = 1
@@ -342,6 +377,13 @@ const rugARScenePipelineModule = () => {
         const localBbox = new THREE.Box3().setFromObject(artModelTemplate)
         requestAnimationFrame(() => {
           dimElements = createDimensionArrows(art, localBbox)
+          createDimToggle(() => {
+            dimVisible = !dimVisible
+            const allMeshes = [...dimElements.sprites, ...dimElements.strips]
+            allMeshes.forEach(m => { m.visible = dimVisible })
+            const tbtn = document.getElementById('dim-toggle-btn')
+            if (tbtn) tbtn.textContent = dimVisible ? 'Hide Markers' : 'Show Markers'
+          })
         })
         showToast('Pinch to scale \u2022 Drag to move', 4000)
       })
@@ -487,7 +529,7 @@ const rugARScenePipelineModule = () => {
             placedArt.position.lerp(dragTarget, dragLerpFactor)
           }
 
-          if (dimElements) {
+          if (dimElements && dimVisible) {
             const cam = XR8.Threejs.xrScene().camera
             const tempVec = new THREE.Vector3()
             placedArt.getWorldPosition(tempVec)
