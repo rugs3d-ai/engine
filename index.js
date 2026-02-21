@@ -1,7 +1,5 @@
 /* globals AFRAME THREE */
 
-let rugPlaced = false
-
 const dbg = (msg) => {
   console.log('[DEBUG]', msg)
   let el = document.getElementById('debug-banner')
@@ -13,6 +11,11 @@ const dbg = (msg) => {
   }
   el.innerHTML += msg + '<br>'
   el.scrollTop = el.scrollHeight
+}
+
+const setTapText = (text) => {
+  const el = document.querySelector('#tap-indicator .tap-text')
+  if (el) el.textContent = text
 }
 
 const hideTapIndicator = () => {
@@ -57,48 +60,92 @@ AFRAME.registerComponent('configure-rug-material', {
   },
 })
 
-AFRAME.registerComponent('tap-place-rug', {
+AFRAME.registerComponent('wall-place', {
   init() {
-    const sceneEl = this.el
+    this.phase = 'waiting'
+    this.raycaster = new THREE.Raycaster()
+    this.cameraEl = null
+    this.threeCamera = null
+    this.wallEl = null
 
-    sceneEl.addEventListener('realityready', () => {
+    this.el.addEventListener('realityready', () => {
+      this.cameraEl = document.getElementById('camera')
+      this.threeCamera = this.cameraEl.getObject3D('camera')
+      this.phase = 'floor'
+      setTapText('Tap the base of the wall')
       showTapIndicator()
+      document.getElementById('wall-marker').setAttribute('visible', 'true')
+      dbg('Phase: floor - point at wall base')
     })
 
-    const ground = document.getElementById('ground')
-    if (!ground) return
-
-    ground.addEventListener('click', (e) => {
-      if (!e.detail || !e.detail.intersection) return
-
-      const point = e.detail.intersection.point
-      const rug = document.getElementById('placed-rug')
-      if (!rug) return
-
-      const camera = document.getElementById('camera')
-      const camY = THREE.MathUtils.radToDeg(camera.object3D.rotation.y)
-
-      dbg('Tap at: ' + point.x.toFixed(2) + ', ' + point.z.toFixed(2) + ' camY=' + camY.toFixed(1))
-
-      if (!rugPlaced) {
-        rug.setAttribute('scale', '0.01 0.01 0.01')
-        rug.setAttribute('visible', 'true')
-        rug.setAttribute('position', point.x + ' 1.5 ' + point.z)
-        rug.setAttribute('rotation', '0 ' + camY + ' 0')
-        dbg('Placed rug at y=1.5, visible=true')
-        rug.setAttribute('animation', {
-          property: 'scale',
-          to: '1 1 1',
-          easing: 'easeOutQuad',
-          dur: 500,
-        })
-        rugPlaced = true
-        hideTapIndicator()
-      } else {
-        rug.setAttribute('position', point.x + ' 1.5 ' + point.z)
-        rug.setAttribute('rotation', '0 ' + camY + ' 0')
+    this.el.addEventListener('click', () => {
+      if (this.phase === 'floor') {
+        this.createWall()
+      } else if (this.phase === 'wall') {
+        this.lockArt()
       }
     })
+  },
+
+  createWall() {
+    const marker = document.getElementById('wall-marker')
+    const art = document.getElementById('placed-rug')
+
+    const wall = document.createElement('a-box')
+    wall.setAttribute('id', 'virtual-wall')
+    wall.setAttribute('class', 'cantap')
+    wall.setAttribute('material', 'color: white; transparent: true; opacity: 0')
+    this.el.appendChild(wall)
+
+    wall.object3D.scale.set(100, 100, 0.25)
+    wall.object3D.rotation.y = marker.object3D.rotation.y
+    const mPos = marker.object3D.position
+    wall.object3D.position.set(mPos.x, mPos.y + 50, mPos.z)
+
+    this.wallEl = wall
+
+    marker.setAttribute('visible', 'false')
+    art.setAttribute('visible', 'true')
+    art.setAttribute('scale', '1 1 1')
+
+    this.phase = 'wall'
+    setTapText('Tap to place on wall')
+    document.getElementById('crosshair').style.display = 'block'
+    dbg('Phase: wall - aim at wall to position art')
+  },
+
+  lockArt() {
+    this.phase = 'placed'
+    hideTapIndicator()
+    document.getElementById('crosshair').style.display = 'none'
+    dbg('Phase: placed - art locked, gestures active')
+  },
+
+  tick() {
+    if (!this.threeCamera) {
+      if (this.cameraEl) this.threeCamera = this.cameraEl.getObject3D('camera')
+      return
+    }
+
+    if (this.phase === 'floor') {
+      this.raycaster.setFromCamera(new THREE.Vector2(0, -0.5), this.threeCamera)
+      const ground = document.getElementById('ground')
+      if (!ground) return
+      const hits = this.raycaster.intersectObject(ground.object3D, true)
+      if (hits.length > 0) {
+        const marker = document.getElementById('wall-marker')
+        marker.object3D.position.lerp(hits[0].point, 0.4)
+        marker.object3D.rotation.y = this.cameraEl.object3D.rotation.y
+      }
+    } else if (this.phase === 'wall' && this.wallEl) {
+      this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.threeCamera)
+      const hits = this.raycaster.intersectObject(this.wallEl.object3D, true)
+      if (hits.length > 0) {
+        const art = document.getElementById('placed-rug')
+        art.object3D.position.lerp(hits[0].point, 0.4)
+        art.object3D.rotation.y = this.wallEl.object3D.rotation.y
+      }
+    }
   },
 })
 
@@ -126,6 +173,5 @@ window.onload = () => {
   if (mv) {
     mv.addEventListener('error', (e) => { dbg('model-viewer ERROR: ' + (e.detail ? JSON.stringify(e.detail) : e.type)) })
     mv.addEventListener('load', () => { dbg('model-viewer loaded OK') })
-    dbg('model-viewer src: ' + mv.getAttribute('src'))
   }
 }

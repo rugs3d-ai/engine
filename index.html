@@ -30,8 +30,8 @@
     <div id="preview-page">
       <model-viewer
         id="model-viewer"
-                src="https://dfcksvowcprcrpfptk.supabase.co/storage/v1/object/public/3d-models/models/2A0pQDoKVq/carpet_model_20260210_094217.glb"
-                alt="3D Wall Art Preview"
+                                src="./carpet_model_20260210_094217.glb"
+                        alt="3D Wall Art Preview"
         camera-controls
         touch-action="pan-y"
         auto-rotate
@@ -61,13 +61,13 @@
         xrextras-runtime-error
         xrweb="scale: absolute"
         renderer="colorManagement: true"
-        tap-place-rug>
+        wall-place>
 
         <a-assets>
           <a-asset-item
             id="rugModel"
-                      src="https://dfcksvowcprcrpfptk.supabase.co/storage/v1/object/public/3d-models/models/2A0pQDoKVq/carpet_model_20260210_094217.glb">
-                    </a-asset-item>
+                                          src="./carpet_model_20260210_094217.glb">
+                              </a-asset-item>
         </a-assets>
 
         <a-camera
@@ -86,7 +86,18 @@
         </a-entity>
         <a-light type="ambient" intensity="0.8"></a-light>
 
-        <!-- Pre-placed wall art entity (hidden until tap) with gesture components -->
+        <!-- Wall base marker (follows gaze on floor, shown during floor phase) -->
+        <a-box
+          id="wall-marker"
+          visible="false"
+          color="#7916ff"
+          width="0.5"
+          depth="0.1"
+          height="0.02"
+          material="opacity: 0.7">
+        </a-box>
+
+        <!-- Wall art entity (hidden until wall is created) with gesture components -->
         <a-entity
           id="placed-rug"
           gltf-model="#rugModel"
@@ -100,15 +111,15 @@
           shadow="receive: false; cast: false">
         </a-entity>
 
-        <a-plane
+        <!-- Invisible ground for floor raycasting -->
+        <a-entity
           id="ground"
           class="cantap"
-          rotation="-90 0 0"
-          width="100"
-          height="100"
-          material="shader: shadow; transparent: true; opacity: 0.3"
-          shadow>
-        </a-plane>
+          geometry="primitive: box"
+          material="color: #fff; transparent: true; opacity: 0"
+          scale="1000 2 1000"
+          position="0 -1 0">
+        </a-entity>
       </a-scene>
     </template>
 
@@ -122,11 +133,14 @@
       </svg>
     </button>
 
+    <!-- Crosshair for wall aiming (shown during wall phase) -->
+    <div id="crosshair" style="display: none;"></div>
+
     <!-- Tap gesture indicator - outside a-scene to avoid z-index conflicts -->
     <div id="tap-indicator" style="display: none;">
       <div class="tap-circle tap-circle-outer"></div>
       <div class="tap-circle tap-circle-inner"></div>
-      <span class="tap-text">Tap to place on wall</span>
+      <span class="tap-text">Tap the base of the wall</span>
     </div>
   </body>
 </html>
