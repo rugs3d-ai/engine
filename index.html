@@ -48,50 +48,57 @@
       </button>
     </div>
 
-    <!-- AR Scene (A-Frame) - hidden by default -->
-    <a-scene
-      id="ar-scene"
-      xrextras-gesture-detector
-      xrextras-loading
-      xrextras-runtime-error
-      xrweb="scale: absolute"
-      renderer="colorManagement: true"
-      tap-place-rug
-      style="display: none;">
+    <!--
+      AR Scene held in a <template> so A-Frame does NOT auto-initialize on page load.
+      It is cloned into #ar-container when "View in AR" is clicked.
+    -->
+    <template id="ar-scene-template">
+      <a-scene
+        id="ar-scene"
+        xrextras-gesture-detector
+        xrextras-loading
+        xrextras-runtime-error
+        xrweb="scale: absolute"
+        renderer="colorManagement: true"
+        tap-place-rug>
 
-      <a-assets>
-        <a-asset-item
-          id="rugModel"
-          src="https://sewcrqgjitpwnfjxnkns.supabase.co/storage/v1/object/public/carpet-images/77de5373-12d7-4c05-97a5-6b12b076480e/models/carpet-3d-IMG_1878-mode2-1766757200493.glb">
-        </a-asset-item>
-      </a-assets>
+        <a-assets>
+          <a-asset-item
+            id="rugModel"
+            src="https://sewcrqgjitpwnfjxnkns.supabase.co/storage/v1/object/public/carpet-images/77de5373-12d7-4c05-97a5-6b12b076480e/models/carpet-3d-IMG_1878-mode2-1766757200493.glb">
+          </a-asset-item>
+        </a-assets>
 
-      <a-camera
-        id="camera"
-        position="0 1.6 0"
-        raycaster="objects: .cantap"
-        cursor="fuse: false; rayOrigin: mouse;">
-      </a-camera>
+        <a-camera
+          id="camera"
+          position="0 1.6 0"
+          raycaster="objects: .cantap"
+          cursor="fuse: false; rayOrigin: mouse;">
+        </a-camera>
 
-      <a-entity
-        light="type: directional; intensity: 0.8"
-        position="0 10 0">
-      </a-entity>
-      <a-entity
-        light="type: hemisphere; color: #ffffff; groundColor: #444444; intensity: 1">
-      </a-entity>
-      <a-light type="ambient" intensity="0.8"></a-light>
+        <a-entity
+          light="type: directional; intensity: 0.8"
+          position="0 10 0">
+        </a-entity>
+        <a-entity
+          light="type: hemisphere; color: #ffffff; groundColor: #444444; intensity: 1">
+        </a-entity>
+        <a-light type="ambient" intensity="0.8"></a-light>
 
-      <a-plane
-        id="ground"
-        class="cantap"
-        rotation="-90 0 0"
-        width="100"
-        height="100"
-        material="shader: shadow; transparent: true; opacity: 0.3"
-        shadow>
-      </a-plane>
-    </a-scene>
+        <a-plane
+          id="ground"
+          class="cantap"
+          rotation="-90 0 0"
+          width="100"
+          height="100"
+          material="shader: shadow; transparent: true; opacity: 0.3"
+          shadow>
+        </a-plane>
+      </a-scene>
+    </template>
+
+    <!-- Container where the a-scene will be injected on "View in AR" click -->
+    <div id="ar-container"></div>
 
     <!-- Back button - outside a-scene to stay on top -->
     <button id="back-btn" class="back-button" style="display: none;">

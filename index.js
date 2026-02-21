@@ -1,6 +1,9 @@
 // Rugs3D - 8th Wall WebAR (A-Frame)
 // Self-hosted 8th Wall engine for World Effects (SLAM tracking)
 // Migrated from Three.js to A-Frame
+//
+// The <a-scene> lives inside a <template> tag so it does NOT auto-initialize
+// on page load. It is cloned into the DOM only when "View in AR" is clicked.
 
 /* globals AFRAME THREE */
 
@@ -42,59 +45,67 @@ AFRAME.registerComponent('tap-place-rug', {
 
     sceneEl.addEventListener('realityready', () => {
       showTapIndicator()
-      document.getElementById('back-btn').style.display = 'flex'
 
       setTimeout(() => {
         tapEnabled = true
       }, 1000)
     })
 
-    const ground = document.getElementById('ground')
-    ground.addEventListener('click', (e) => {
-      if (!tapEnabled) return
+    sceneEl.addEventListener('loaded', () => {
+      const ground = document.getElementById('ground')
+      if (!ground) return
 
-      const point = e.detail.intersection.point
+      ground.addEventListener('click', (e) => {
+        if (!tapEnabled) return
+        if (!e.detail || !e.detail.intersection) return
 
-      if (!rugPlaced) {
-        const rug = document.createElement('a-entity')
-        rug.setAttribute('id', 'placed-rug')
-        rug.setAttribute('gltf-model', '#rugModel')
-        rug.setAttribute('position', point.x + ' 0.01 ' + point.z)
-        rug.setAttribute('scale', '0.01 0.01 0.01')
-        rug.setAttribute('class', 'cantap')
-        rug.setAttribute('shadow', 'receive: false; cast: false')
-        rug.setAttribute('xrextras-hold-drag', '')
-        rug.setAttribute('xrextras-two-finger-rotate', '')
-        rug.setAttribute('xrextras-pinch-scale', 'min: 0.3; max: 3')
-        rug.setAttribute('configure-rug-material', '')
+        const point = e.detail.intersection.point
 
-        sceneEl.appendChild(rug)
-
-        rug.addEventListener('model-loaded', () => {
-          rug.setAttribute('visible', 'true')
-          rug.setAttribute('animation', {
-            property: 'scale',
-            to: '1 1 1',
-            easing: 'easeOutElastic',
-            dur: 500,
-          })
-        })
-
-        rugPlaced = true
-        hideTapIndicator()
-      } else {
-        const rug = document.getElementById('placed-rug')
-        if (rug) {
+        if (!rugPlaced) {
+          const rug = document.createElement('a-entity')
+          rug.setAttribute('id', 'placed-rug')
+          rug.setAttribute('gltf-model', '#rugModel')
           rug.setAttribute('position', point.x + ' 0.01 ' + point.z)
+          rug.setAttribute('scale', '0.01 0.01 0.01')
+          rug.setAttribute('class', 'cantap')
+          rug.setAttribute('shadow', 'receive: false; cast: false')
+          rug.setAttribute('xrextras-hold-drag', '')
+          rug.setAttribute('xrextras-two-finger-rotate', '')
+          rug.setAttribute('xrextras-pinch-scale', 'min: 0.3; max: 3')
+          rug.setAttribute('configure-rug-material', '')
+
+          sceneEl.appendChild(rug)
+
+          rug.addEventListener('model-loaded', () => {
+            rug.setAttribute('visible', 'true')
+            rug.setAttribute('animation', {
+              property: 'scale',
+              to: '1 1 1',
+              easing: 'easeOutElastic',
+              dur: 500,
+            })
+          })
+
+          rugPlaced = true
+          hideTapIndicator()
+        } else {
+          const rug = document.getElementById('placed-rug')
+          if (rug) {
+            rug.setAttribute('position', point.x + ' 0.01 ' + point.z)
+          }
         }
-      }
+      })
     })
   },
 })
 
 const startAR = () => {
   document.getElementById('preview-page').style.display = 'none'
-  document.getElementById('ar-scene').style.display = ''
+  document.getElementById('back-btn').style.display = 'flex'
+
+  const template = document.getElementById('ar-scene-template')
+  const clone = template.content.cloneNode(true)
+  document.getElementById('ar-container').appendChild(clone)
 }
 
 window.onload = () => {
