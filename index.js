@@ -43,6 +43,7 @@ const onXrLoaded = () => {
   setButtonLoading(false)
   if (pendingStart) {
     pendingStart = false
+    setOverlayText('Starting camera\u2026')
     injectArScene()
   }
 }
@@ -372,14 +373,17 @@ const startAR = () => {
 
   if (!xrReady) {
     pendingStart = true
-    setButtonLoading(true)
+    setOverlayText('Loading AR engine\u2026')
+    showStartOverlay()
+    document.getElementById('preview-page').style.display = 'none'
+    document.getElementById('back-btn').style.display = 'flex'
     return
   }
 
   injectArScene()
 }
 
-window.onload = () => {
+const initPage = () => {
   const btn = document.getElementById('view-ar-btn')
   btn.addEventListener('click', startAR)
 
@@ -404,4 +408,10 @@ window.onload = () => {
     mv.addEventListener('error', (e) => { dbg('model-viewer ERROR: ' + (e.detail ? JSON.stringify(e.detail) : e.type)) })
     mv.addEventListener('load', () => { dbg('model-viewer loaded OK') })
   }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initPage)
+} else {
+  initPage()
 }
