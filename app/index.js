@@ -133,64 +133,62 @@ const roundRect = (ctx, x, y, w, h, r) => {
   ctx.closePath()
 }
 
-const makeDimLabel = (text) => {
+const makeDimSprite = (text) => {
   const c = document.createElement('canvas')
-  c.width = 256
-  c.height = 64
+  c.width = 512
+  c.height = 128
   const ctx = c.getContext('2d')
-  ctx.fillStyle = 'rgba(0,0,0,0.7)'
-  roundRect(ctx, 0, 0, 256, 64, 10)
+  ctx.fillStyle = 'rgba(0,0,0,0.75)'
+  roundRect(ctx, 0, 0, 512, 128, 20)
   ctx.fill()
   ctx.fillStyle = '#ffffff'
-  ctx.font = 'bold 36px Arial, sans-serif'
+  ctx.font = 'bold 72px Arial, sans-serif'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.fillText(text, 128, 32)
+  ctx.fillText(text, 256, 64)
   const tex = new THREE.CanvasTexture(c)
   tex.colorSpace = THREE.SRGBColorSpace
-  return tex
+  const mat = new THREE.SpriteMaterial({map: tex, transparent: true, depthTest: false})
+  return new THREE.Sprite(mat)
 }
 
-const createDimensionArrows = (artGroup) => {
-  const bbox = new THREE.Box3().setFromObject(artGroup)
-  const w = bbox.max.x - bbox.min.x
-  const h = bbox.max.y - bbox.min.y
+const createDimensionArrows = (artGroup, localBbox) => {
+  const w = localBbox.max.x - localBbox.min.x
+  const h = localBbox.max.y - localBbox.min.y
   const wCm = Math.round(w * 100)
   const hCm = Math.round(h * 100)
 
   const lineMat = new THREE.LineBasicMaterial({color: 0xffffff})
-  const gap = 0.015
-  const arrow = 0.008
-  const z = 0.001
+  const gap = 0.02
+  const tick = 0.01
+  const z = 0.002
 
   const addLine = (pts) => {
     const geo = new THREE.BufferGeometry().setFromPoints(pts)
     artGroup.add(new THREE.Line(geo, lineMat))
   }
 
-  const bY = bbox.min.y - gap
-  addLine([new THREE.Vector3(bbox.min.x, bY, z), new THREE.Vector3(bbox.max.x, bY, z)])
-  addLine([new THREE.Vector3(bbox.min.x, bY - arrow, z), new THREE.Vector3(bbox.min.x, bY + arrow, z)])
-  addLine([new THREE.Vector3(bbox.max.x, bY - arrow, z), new THREE.Vector3(bbox.max.x, bY + arrow, z)])
+  const tY = localBbox.max.y + gap
+  addLine([new THREE.Vector3(localBbox.min.x, tY, z), new THREE.Vector3(localBbox.max.x, tY, z)])
+  addLine([new THREE.Vector3(localBbox.min.x, tY - tick, z), new THREE.Vector3(localBbox.min.x, tY + tick, z)])
+  addLine([new THREE.Vector3(localBbox.max.x, tY - tick, z), new THREE.Vector3(localBbox.max.x, tY + tick, z)])
 
-  const wLabelW = 0.07
-  const wLabelH = wLabelW * 0.25
-  const wMat = new THREE.MeshBasicMaterial({map: makeDimLabel(wCm + ' cm'), side: THREE.DoubleSide, transparent: true})
-  const wMesh = new THREE.Mesh(new THREE.PlaneGeometry(wLabelW, wLabelH), wMat)
-  wMesh.position.set((bbox.min.x + bbox.max.x) / 2, bY - wLabelH / 2 - 0.005, z)
-  artGroup.add(wMesh)
+  const wSprite = makeDimSprite(wCm + ' cm')
+  wSprite.position.set((localBbox.min.x + localBbox.max.x) / 2, tY + 0.025, z)
+  wSprite.center.set(0.5, 0.5)
+  artGroup.add(wSprite)
 
-  const rX = bbox.max.x + gap
-  addLine([new THREE.Vector3(rX, bbox.min.y, z), new THREE.Vector3(rX, bbox.max.y, z)])
-  addLine([new THREE.Vector3(rX - arrow, bbox.min.y, z), new THREE.Vector3(rX + arrow, bbox.min.y, z)])
-  addLine([new THREE.Vector3(rX - arrow, bbox.max.y, z), new THREE.Vector3(rX + arrow, bbox.max.y, z)])
+  const rX = localBbox.max.x + gap
+  addLine([new THREE.Vector3(rX, localBbox.min.y, z), new THREE.Vector3(rX, localBbox.max.y, z)])
+  addLine([new THREE.Vector3(rX - tick, localBbox.min.y, z), new THREE.Vector3(rX + tick, localBbox.min.y, z)])
+  addLine([new THREE.Vector3(rX - tick, localBbox.max.y, z), new THREE.Vector3(rX + tick, localBbox.max.y, z)])
 
-  const hLabelW = 0.07
-  const hLabelH = hLabelW * 0.25
-  const hMat = new THREE.MeshBasicMaterial({map: makeDimLabel(hCm + ' cm'), side: THREE.DoubleSide, transparent: true})
-  const hMesh = new THREE.Mesh(new THREE.PlaneGeometry(hLabelW, hLabelH), hMat)
-  hMesh.position.set(rX + hLabelW / 2 + 0.005, (bbox.min.y + bbox.max.y) / 2, z)
-  artGroup.add(hMesh)
+  const hSprite = makeDimSprite(hCm + ' cm')
+  hSprite.position.set(rX + 0.025, (localBbox.min.y + localBbox.max.y) / 2, z)
+  hSprite.center.set(0.5, 0.5)
+  artGroup.add(hSprite)
+
+  return [wSprite, hSprite]
 }
 
 const rugARScenePipelineModule = () => {
@@ -203,6 +201,7 @@ const rugARScenePipelineModule = () => {
   let placedArt = null
   let artModelTemplate = null
   let modelLoaded = false
+  let dimSprites = []
   const loader = new THREE.GLTFLoader()
 
   let scaleFactor = 1
@@ -315,7 +314,10 @@ const rugARScenePipelineModule = () => {
         initialScale = {x: art.scale.x, y: art.scale.y, z: art.scale.z}
         scaleFactor = 1
         targetScaleFactor = 1
-        requestAnimationFrame(() => createDimensionArrows(art))
+        const localBbox = new THREE.Box3().setFromObject(artModelTemplate)
+        requestAnimationFrame(() => {
+          dimSprites = createDimensionArrows(art, localBbox)
+        })
         showToast('Pinch to scale \u2022 Drag to move', 4000)
       })
       .start()
@@ -458,6 +460,17 @@ const rugARScenePipelineModule = () => {
         if (placedArt) {
           if (isDragging) {
             placedArt.position.lerp(dragTarget, dragLerpFactor)
+          }
+
+          if (dimSprites.length > 0) {
+            const cam = XR8.Threejs.xrScene().camera
+            const tempVec = new THREE.Vector3()
+            dimSprites.forEach((sprite) => {
+              sprite.getWorldPosition(tempVec)
+              const dist = cam.position.distanceTo(tempVec)
+              const s = dist * 0.06
+              sprite.scale.set(s, s * 0.25, 1)
+            })
           }
 
           if (isPinching) {
