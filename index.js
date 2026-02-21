@@ -2,15 +2,6 @@
 
 const dbg = (msg) => {
   console.log('[DEBUG]', msg)
-  let el = document.getElementById('debug-banner')
-  if (!el) {
-    el = document.createElement('div')
-    el.id = 'debug-banner'
-    el.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.8);color:#0f0;font:12px monospace;padding:8px;z-index:99999;max-height:30vh;overflow:auto;'
-    document.body.appendChild(el)
-  }
-  el.innerHTML += msg + '<br>'
-  el.scrollTop = el.scrollHeight
 }
 
 const setTapText = (text) => {
