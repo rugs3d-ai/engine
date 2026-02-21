@@ -14,6 +14,14 @@ const showTapIndicator = () => {
   document.getElementById('tap-indicator').style.display = 'flex'
 }
 
+const enableARButton = () => {
+  const btn = document.getElementById('view-ar-btn')
+  btn.disabled = false
+  btn.querySelector('.spinner').style.display = 'none'
+  btn.querySelector('.ar-icon').style.display = 'block'
+  document.getElementById('btn-text').textContent = 'View in AR'
+}
+
 AFRAME.registerComponent('configure-rug-material', {
   init() {
     this.el.addEventListener('model-loaded', () => {
@@ -48,6 +56,7 @@ AFRAME.registerComponent('tap-place-rug', {
       if (!rug) return
 
       if (!rugPlaced) {
+        rug.setAttribute('scale', '0.01 0.01 0.01')
         rug.setAttribute('visible', 'true')
         rug.setAttribute('position', point.x + ' 0.01 ' + point.z)
         rug.setAttribute('animation', {
@@ -75,7 +84,11 @@ const startAR = () => {
 }
 
 window.onload = () => {
-  document.getElementById('view-ar-btn').addEventListener('click', startAR)
+  const btn = document.getElementById('view-ar-btn')
+  btn.addEventListener('click', startAR)
+
+  const onxrloaded = () => { enableARButton() }
+  window.XR8 ? onxrloaded() : window.addEventListener('xrloaded', onxrloaded)
 
   document.getElementById('back-btn').addEventListener('click', () => {
     window.location.reload()

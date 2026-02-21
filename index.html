@@ -38,13 +38,14 @@
         shadow-intensity="1"
         exposure="1"
       ></model-viewer>
-      <button id="view-ar-btn" class="view-ar-button">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <button id="view-ar-btn" class="view-ar-button" disabled>
+        <svg class="ar-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-        View in AR
+        <span class="spinner"></span>
+        <span id="btn-text">Loading AR...</span>
       </button>
     </div>
 
@@ -91,7 +92,7 @@
           gltf-model="#rugModel"
           visible="false"
           position="0 -999 0"
-          scale="0.01 0.01 0.01"
+          scale="1 1 1"
           class="cantap"
           xrextras-hold-drag="rise-height: 0"
           xrextras-two-finger-rotate
