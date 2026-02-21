@@ -152,39 +152,61 @@ const makeDimSprite = (text) => {
   return new THREE.Sprite(mat)
 }
 
+const makeGlowStrip = (x1, y1, x2, y2, z, thickness) => {
+  const dx = x2 - x1
+  const dy = y2 - y1
+  const len = Math.sqrt(dx * dx + dy * dy)
+  const cx = (x1 + x2) / 2
+  const cy = (y1 + y2) / 2
+  const angle = Math.atan2(dy, dx)
+
+  const glowMat = new THREE.MeshBasicMaterial({color: 0x00ffff, transparent: true, opacity: 0.35, depthTest: false, side: THREE.DoubleSide})
+  const glowGeo = new THREE.PlaneGeometry(len, thickness * 4)
+  const glow = new THREE.Mesh(glowGeo, glowMat)
+  glow.position.set(cx, cy, z - 0.0005)
+  glow.rotation.z = angle
+
+  const coreMat = new THREE.MeshBasicMaterial({color: 0x00ffff, transparent: true, opacity: 0.95, depthTest: false, side: THREE.DoubleSide})
+  const coreGeo = new THREE.PlaneGeometry(len, thickness)
+  const core = new THREE.Mesh(coreGeo, coreMat)
+  core.position.set(cx, cy, z)
+  core.rotation.z = angle
+
+  return [glow, core]
+}
+
 const createDimensionArrows = (artGroup, localBbox) => {
   const w = localBbox.max.x - localBbox.min.x
   const h = localBbox.max.y - localBbox.min.y
   const wCm = Math.round(w * 100)
   const hCm = Math.round(h * 100)
 
-  const lineMat = new THREE.LineBasicMaterial({color: 0xffffff})
-  const gap = 0.02
-  const tick = 0.01
-  const z = 0.002
+  const gap = 0.025
+  const tick = 0.015
+  const z = 0.003
+  const thick = 0.002
 
-  const addLine = (pts) => {
-    const geo = new THREE.BufferGeometry().setFromPoints(pts)
-    artGroup.add(new THREE.Line(geo, lineMat))
+  const addStrip = (x1, y1, x2, y2) => {
+    makeGlowStrip(x1, y1, x2, y2, z, thick).forEach(m => artGroup.add(m))
   }
 
   const tY = localBbox.max.y + gap
-  addLine([new THREE.Vector3(localBbox.min.x, tY, z), new THREE.Vector3(localBbox.max.x, tY, z)])
-  addLine([new THREE.Vector3(localBbox.min.x, tY - tick, z), new THREE.Vector3(localBbox.min.x, tY + tick, z)])
-  addLine([new THREE.Vector3(localBbox.max.x, tY - tick, z), new THREE.Vector3(localBbox.max.x, tY + tick, z)])
+  addStrip(localBbox.min.x, tY, localBbox.max.x, tY)
+  addStrip(localBbox.min.x, tY - tick, localBbox.min.x, tY + tick)
+  addStrip(localBbox.max.x, tY - tick, localBbox.max.x, tY + tick)
 
   const wSprite = makeDimSprite(wCm + ' cm')
-  wSprite.position.set((localBbox.min.x + localBbox.max.x) / 2, tY + 0.025, z)
+  wSprite.position.set((localBbox.min.x + localBbox.max.x) / 2, tY + 0.035, z)
   wSprite.center.set(0.5, 0.5)
   artGroup.add(wSprite)
 
   const rX = localBbox.max.x + gap
-  addLine([new THREE.Vector3(rX, localBbox.min.y, z), new THREE.Vector3(rX, localBbox.max.y, z)])
-  addLine([new THREE.Vector3(rX - tick, localBbox.min.y, z), new THREE.Vector3(rX + tick, localBbox.min.y, z)])
-  addLine([new THREE.Vector3(rX - tick, localBbox.max.y, z), new THREE.Vector3(rX + tick, localBbox.max.y, z)])
+  addStrip(rX, localBbox.min.y, rX, localBbox.max.y)
+  addStrip(rX - tick, localBbox.min.y, rX + tick, localBbox.min.y)
+  addStrip(rX - tick, localBbox.max.y, rX + tick, localBbox.max.y)
 
   const hSprite = makeDimSprite(hCm + ' cm')
-  hSprite.position.set(rX + 0.025, (localBbox.min.y + localBbox.max.y) / 2, z)
+  hSprite.position.set(rX + 0.035, (localBbox.min.y + localBbox.max.y) / 2, z)
   hSprite.center.set(0.5, 0.5)
   artGroup.add(hSprite)
 
@@ -468,7 +490,7 @@ const rugARScenePipelineModule = () => {
             dimSprites.forEach((sprite) => {
               sprite.getWorldPosition(tempVec)
               const dist = cam.position.distanceTo(tempVec)
-              const s = dist * 0.06
+              const s = dist * 0.12
               sprite.scale.set(s, s * 0.25, 1)
             })
           }
