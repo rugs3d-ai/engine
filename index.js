@@ -4,8 +4,6 @@
 
 /* globals AFRAME THREE */
 
-const RUG_MODEL_URL = 'https://sewcrqgjitpwnfjxnkns.supabase.co/storage/v1/object/public/carpet-images/77de5373-12d7-4c05-97a5-6b12b076480e/models/carpet-3d-IMG_1878-mode2-1766757200493.glb'
-
 let tapEnabled = false
 let rugPlaced = false
 
