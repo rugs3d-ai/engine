@@ -67,6 +67,7 @@ AFRAME.registerComponent('wall-place', {
     this.cameraEl = null
     this.threeCamera = null
     this.wallEl = null
+    this.dragging = false
 
     this.el.addEventListener('realityready', () => {
       this.cameraEl = document.getElementById('camera')
@@ -79,9 +80,25 @@ AFRAME.registerComponent('wall-place', {
 
       let touchStart = 0
       this.el.canvas.addEventListener('touchstart', (e) => {
-        if (e.touches.length === 1) touchStart = Date.now()
+        if (e.touches.length === 1) {
+          touchStart = Date.now()
+          if (this.phase === 'placed') this.dragging = true
+        }
+      })
+      this.el.canvas.addEventListener('touchmove', (e) => {
+        if (!this.dragging || e.touches.length !== 1 || !this.wallEl) return
+        const touch = e.touches[0]
+        const x = (touch.clientX / window.innerWidth) * 2 - 1
+        const y = -(touch.clientY / window.innerHeight) * 2 + 1
+        this.raycaster.setFromCamera(new THREE.Vector2(x, y), this.threeCamera)
+        const hits = this.raycaster.intersectObject(this.wallEl.object3D, true)
+        if (hits.length > 0) {
+          const art = document.getElementById('placed-rug')
+          art.object3D.position.lerp(hits[0].point, 0.5)
+        }
       })
       this.el.canvas.addEventListener('touchend', (e) => {
+        this.dragging = false
         if (e.changedTouches.length === 1 && Date.now() - touchStart < 400) {
           if (this.phase === 'floor') this.createWall()
           else if (this.phase === 'wall') this.lockArt()
