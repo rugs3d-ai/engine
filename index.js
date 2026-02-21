@@ -45,11 +45,11 @@ AFRAME.registerComponent('grid-material', {
     canvas.height = 256
     const ctx = canvas.getContext('2d')
 
-    ctx.fillStyle = 'rgba(121, 22, 255, 0.1)'
+    ctx.fillStyle = 'rgba(121, 22, 255, 0.3)'
     ctx.fillRect(0, 0, 256, 256)
 
-    ctx.strokeStyle = 'rgba(121, 22, 255, 0.35)'
-    ctx.lineWidth = 1
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'
+    ctx.lineWidth = 1.5
     const step = 32
     for (let i = 0; i <= 256; i += step) {
       ctx.beginPath()
@@ -62,22 +62,22 @@ AFRAME.registerComponent('grid-material', {
       ctx.stroke()
     }
 
-    ctx.strokeStyle = 'rgba(121, 22, 255, 0.7)'
-    ctx.lineWidth = 3
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'
+    ctx.lineWidth = 4
     ctx.beginPath()
     ctx.moveTo(0, 256)
     ctx.lineTo(256, 256)
     ctx.stroke()
 
-    ctx.strokeStyle = 'rgba(121, 22, 255, 0.5)'
-    ctx.lineWidth = 2
+    ctx.strokeStyle = 'rgba(121, 22, 255, 0.8)'
+    ctx.lineWidth = 3
     ctx.strokeRect(0, 0, 256, 256)
 
     const texture = new THREE.CanvasTexture(canvas)
     const material = new THREE.MeshBasicMaterial({
       map: texture,
       transparent: true,
-      opacity: 0.85,
+      opacity: 1.0,
       side: THREE.DoubleSide,
       depthWrite: false,
     })
