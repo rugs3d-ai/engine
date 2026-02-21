@@ -92,22 +92,12 @@ html, body {
   color: #333;
 }
 
-/* Hide ALL 8th Wall / XRExtras injected UI elements */
+/* Hide 8th Wall branding elements (keep functional xrextras UI) */
 .poweredby-img,
 img[src*="poweredby"],
 img[src*="8thwall"],
-img[src*="load-grad"],
 .xrextras-old-style .poweredby-img,
-[class*="poweredby"],
-[class*="xrextras"],
-[class*="prompt-box-8w"],
-[class*="prompt-button-8w"],
-[class*="button-primary-8w"],
-[class*="loading-screen"],
-[class*="almost-there"],
-[class*="request-permission"],
-[id*="requestingCameraPermissions"],
-[id*="loadBackground"] {
+[class*="poweredby"] {
   display: none !important;
   visibility: hidden !important;
   opacity: 0 !important;
