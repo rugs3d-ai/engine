@@ -13,6 +13,7 @@
     <link rel="preconnect" href="https://ajax.googleapis.com" crossorigin>
     <link rel="dns-prefetch" href="//cdn.8thwall.com">
     <link rel="dns-prefetch" href="//ajax.googleapis.com">
+    <link rel="preload" href="./xr.js" as="script">
 
     <!-- Google Model Viewer for 3D preview -->
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
@@ -39,18 +40,17 @@
                         alt="3D Wall Art Preview"
         camera-controls
         touch-action="pan-y"
-        auto-rotate
         shadow-intensity="1"
         exposure="1"
       ></model-viewer>
-      <button id="view-ar-btn" class="view-ar-button" disabled>
+      <button id="view-ar-btn" class="view-ar-button">
         <svg class="ar-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
         <span class="spinner"></span>
-        <span id="btn-text">Loading AR...</span>
+        <span id="btn-text">View in AR</span>
       </button>
     </div>
 

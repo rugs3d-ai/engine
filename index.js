@@ -21,12 +21,30 @@ const showTapIndicator = () => {
   document.getElementById('tap-indicator').style.display = 'flex'
 }
 
-const enableARButton = () => {
+let xrReady = false
+let pendingStart = false
+let arSceneInjected = false
+
+const setOverlayText = (text) => {
+  const el = document.querySelector('#ar-start-overlay .ar-start-text')
+  if (el) el.textContent = text
+}
+
+const setButtonLoading = (loading) => {
   const btn = document.getElementById('view-ar-btn')
-  btn.disabled = false
-  btn.querySelector('.spinner').style.display = 'none'
-  btn.querySelector('.ar-icon').style.display = 'block'
-  document.getElementById('btn-text').textContent = 'View in AR'
+  if (!btn) return
+  btn.querySelector('.spinner').style.display = loading ? 'inline-block' : 'none'
+  btn.querySelector('.ar-icon').style.display = loading ? 'none' : 'block'
+  document.getElementById('btn-text').textContent = loading ? 'Loading AR…' : 'View in AR'
+}
+
+const onXrLoaded = () => {
+  xrReady = true
+  setButtonLoading(false)
+  if (pendingStart) {
+    pendingStart = false
+    injectArScene()
+  }
 }
 
 AFRAME.registerComponent('grid-material', {
@@ -309,7 +327,11 @@ const hideStartOverlay = () => {
   if (overlay) overlay.style.display = 'none'
 }
 
-const startAR = () => {
+const injectArScene = () => {
+  if (arSceneInjected) return
+  arSceneInjected = true
+
+  setOverlayText('Starting camera…')
   showStartOverlay()
   document.getElementById('preview-page').style.display = 'none'
   document.getElementById('back-btn').style.display = 'flex'
@@ -345,12 +367,24 @@ const startAR = () => {
   }, 100)
 }
 
+const startAR = () => {
+  if (pendingStart || arSceneInjected) return
+
+  if (!xrReady) {
+    pendingStart = true
+    setButtonLoading(true)
+    return
+  }
+
+  injectArScene()
+}
+
 window.onload = () => {
   const btn = document.getElementById('view-ar-btn')
   btn.addEventListener('click', startAR)
 
-  const onxrloaded = () => { enableARButton() }
-  window.XR8 ? onxrloaded() : window.addEventListener('xrloaded', onxrloaded)
+  setButtonLoading(false)
+  window.XR8 ? onXrLoaded() : window.addEventListener('xrloaded', onXrLoaded)
 
   document.getElementById('back-btn').addEventListener('click', () => {
     window.location.reload()
