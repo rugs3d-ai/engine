@@ -92,16 +92,26 @@ html, body {
   color: #333;
 }
 
-/* Hide ONLY 8th Wall branding elements - NOT the functional UI */
+/* Hide ALL 8th Wall / XRExtras injected UI elements */
 .poweredby-img,
 img[src*="poweredby"],
 img[src*="8thwall"],
 img[src*="load-grad"],
 .xrextras-old-style .poweredby-img,
-[class*="poweredby"] {
+[class*="poweredby"],
+[class*="xrextras"],
+[class*="prompt-box-8w"],
+[class*="prompt-button-8w"],
+[class*="button-primary-8w"],
+[class*="loading-screen"],
+[class*="almost-there"],
+[class*="request-permission"],
+[id*="requestingCameraPermissions"],
+[id*="loadBackground"] {
   display: none !important;
   visibility: hidden !important;
   opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 /* Tap gesture indicator - centered on screen, high z-index to stay above A-Frame canvas */

@@ -181,7 +181,22 @@ AFRAME.registerComponent('tap-place-rug', {
   },
 })
 
-const startAR = () => {
+const requestMotionPermission = async () => {
+  if (typeof DeviceMotionEvent !== 'undefined' &&
+      typeof DeviceMotionEvent.requestPermission === 'function') {
+    try {
+      const response = await DeviceMotionEvent.requestPermission()
+      return response === 'granted'
+    } catch (e) {
+      return false
+    }
+  }
+  return true
+}
+
+const startAR = async () => {
+  await requestMotionPermission()
+
   document.getElementById('preview-page').style.display = 'none'
   document.getElementById('back-btn').style.display = 'flex'
 

@@ -15,9 +15,6 @@
     <!-- 8-Frame: 8th Wall's patched A-Frame (includes Three.js) -->
     <script src="//cdn.8thwall.com/web/aframe/8frame-1.4.1.min.js"></script>
 
-    <!-- XR Extras - provides gesture components, loading screen, error handling -->
-    <script src="https://cdn.8thwall.com/web/xrextras/xrextras.js"></script>
-
     <!-- 8th Wall Self-Hosted Engine - World Effects (SLAM) -->
     <script async src="./xr.js" data-preload-chunks="slam"></script>
 
@@ -55,7 +52,6 @@
     <template id="ar-scene-template">
       <a-scene
         id="ar-scene"
-        xrextras-runtime-error
         xrweb="scale: absolute"
         renderer="colorManagement: true"
         tap-place-rug>
