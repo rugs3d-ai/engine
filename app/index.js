@@ -88,6 +88,18 @@ const hideTapIndicator = () => {
   }
 }
 
+const showRulerInstruction = () => {
+  const el = document.getElementById('ruler-instruction')
+  if (el) {
+    el.style.display = 'block'
+    setTimeout(() => { el.style.opacity = '1' }, 50)
+    setTimeout(() => {
+      el.style.opacity = '0'
+      setTimeout(() => { el.style.display = 'none' }, 400)
+    }, 6000)
+  }
+}
+
 let scaleLabelTimer = null
 const showScaleLabel = (percent) => {
   const label = document.getElementById('scale-label')
@@ -119,79 +131,78 @@ const roundRect = (ctx, x, y, w, h, r) => {
   ctx.closePath()
 }
 
-const createCreditCardReference = (artGroup) => {
-  const CARD_W = 0.0856
-  const CARD_H = 0.05398
+const createRulerReference = (artGroup) => {
+  const RULER_H = 0.3
+  const RULER_W = 0.025
+  const CANVAS_W = 200
+  const CANVAS_H = 2400
 
-  const cardCanvas = document.createElement('canvas')
-  cardCanvas.width = 512
-  cardCanvas.height = 322
-  const ctx = cardCanvas.getContext('2d')
+  const canvas = document.createElement('canvas')
+  canvas.width = CANVAS_W
+  canvas.height = CANVAS_H
+  const ctx = canvas.getContext('2d')
 
   ctx.fillStyle = '#ffffff'
-  roundRect(ctx, 0, 0, 512, 322, 24)
+  roundRect(ctx, 0, 0, CANVAS_W, CANVAS_H, 12)
   ctx.fill()
-
-  ctx.strokeStyle = '#888888'
-  ctx.lineWidth = 4
-  ctx.setLineDash([12, 6])
-  roundRect(ctx, 8, 8, 496, 306, 20)
+  ctx.strokeStyle = '#cccccc'
+  ctx.lineWidth = 2
+  roundRect(ctx, 1, 1, CANVAS_W - 2, CANVAS_H - 2, 12)
   ctx.stroke()
-  ctx.setLineDash([])
 
-  ctx.fillStyle = '#333333'
-  ctx.font = 'bold 40px Arial, sans-serif'
+  const totalCm = 30
+  const pxPerCm = CANVAS_H / totalCm
+
+  for (let cm = 0; cm <= totalCm; cm++) {
+    const y = CANVAS_H - cm * pxPerCm
+    ctx.strokeStyle = '#333333'
+    if (cm % 5 === 0) {
+      ctx.lineWidth = 3
+      ctx.beginPath()
+      ctx.moveTo(0, y)
+      ctx.lineTo(CANVAS_W * 0.6, y)
+      ctx.stroke()
+      ctx.fillStyle = '#333333'
+      ctx.font = 'bold 48px Arial, sans-serif'
+      ctx.textAlign = 'right'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(cm.toString(), CANVAS_W - 10, y)
+    } else {
+      ctx.lineWidth = 1.5
+      ctx.beginPath()
+      ctx.moveTo(0, y)
+      ctx.lineTo(CANVAS_W * 0.35, y)
+      ctx.stroke()
+    }
+  }
+
+  ctx.save()
+  ctx.translate(22, CANVAS_H / 2)
+  ctx.rotate(-Math.PI / 2)
+  ctx.fillStyle = '#999999'
+  ctx.font = '36px Arial, sans-serif'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.fillText('CREDIT CARD', 256, 130)
+  ctx.fillText('cm', 0, 0)
+  ctx.restore()
 
-  ctx.font = '30px Arial, sans-serif'
-  ctx.fillStyle = '#666666'
-  ctx.fillText('85.6 \u00D7 54 mm', 256, 190)
-
-  const cardTexture = new THREE.CanvasTexture(cardCanvas)
-  cardTexture.colorSpace = THREE.SRGBColorSpace
-  const cardMat = new THREE.MeshBasicMaterial({map: cardTexture, side: THREE.DoubleSide, transparent: true})
-  const cardGeo = new THREE.PlaneGeometry(CARD_W, CARD_H)
-  const cardMesh = new THREE.Mesh(cardGeo, cardMat)
-
-  const textCanvas = document.createElement('canvas')
-  textCanvas.width = 1024
-  textCanvas.height = 200
-  const tCtx = textCanvas.getContext('2d')
-
-  tCtx.fillStyle = 'rgba(0, 0, 0, 0.75)'
-  roundRect(tCtx, 0, 0, 1024, 200, 16)
-  tCtx.fill()
-
-  tCtx.fillStyle = '#ffffff'
-  tCtx.font = 'bold 32px Arial, sans-serif'
-  tCtx.textAlign = 'center'
-  tCtx.textBaseline = 'middle'
-  tCtx.fillText('Scale this to an actual credit card size', 512, 65)
-  tCtx.fillText('for true size idea of your art piece', 512, 115)
-
-  const textTexture = new THREE.CanvasTexture(textCanvas)
-  textTexture.colorSpace = THREE.SRGBColorSpace
-  const textW = 0.18
-  const textH = textW * (200 / 1024)
-  const textMat = new THREE.MeshBasicMaterial({map: textTexture, side: THREE.DoubleSide, transparent: true})
-  const textGeo = new THREE.PlaneGeometry(textW, textH)
-  const textMesh = new THREE.Mesh(textGeo, textMat)
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  const mat = new THREE.MeshBasicMaterial({map: texture, side: THREE.DoubleSide, transparent: true})
+  const geo = new THREE.PlaneGeometry(RULER_W, RULER_H)
+  const rulerMesh = new THREE.Mesh(geo, mat)
 
   const bbox = new THREE.Box3().setFromObject(artGroup)
   const artWidth = bbox.max.x - bbox.min.x
+  const artHeight = bbox.max.y - bbox.min.y
 
-  const cardX = artWidth / 2 + CARD_W / 2 + 0.015
-  const cardY = (bbox.min.y + bbox.max.y) / 2 - CARD_H
-  cardMesh.position.set(cardX, cardY, 0.001)
+  const rulerX = artWidth / 2 + RULER_W / 2 + 0.01
+  const rulerY = bbox.max.y - RULER_H / 2
+  rulerMesh.position.set(rulerX, rulerY, 0.001)
 
-  textMesh.position.set(cardX, cardY + CARD_H / 2 + textH / 2 + 0.008, 0.001)
+  artGroup.add(rulerMesh)
 
-  artGroup.add(cardMesh)
-  artGroup.add(textMesh)
-
-  return {cardMesh, textMesh}
+  return rulerMesh
 }
 
 const rugARScenePipelineModule = () => {
@@ -314,7 +325,8 @@ const rugARScenePipelineModule = () => {
         initialScale = {x: art.scale.x, y: art.scale.y, z: art.scale.z}
         scaleFactor = 1
         targetScaleFactor = 1
-        createCreditCardReference(art)
+        createRulerReference(art)
+        showRulerInstruction()
       })
       .start()
   }
