@@ -299,13 +299,50 @@ AFRAME.registerComponent('ar-place', {
   },
 })
 
+const showStartOverlay = () => {
+  const overlay = document.getElementById('ar-start-overlay')
+  if (overlay) overlay.style.display = 'flex'
+}
+
+const hideStartOverlay = () => {
+  const overlay = document.getElementById('ar-start-overlay')
+  if (overlay) overlay.style.display = 'none'
+}
+
 const startAR = () => {
+  showStartOverlay()
   document.getElementById('preview-page').style.display = 'none'
   document.getElementById('back-btn').style.display = 'flex'
 
   const template = document.getElementById('ar-scene-template')
   const clone = template.content.cloneNode(true)
   document.getElementById('ar-container').appendChild(clone)
+
+  const scene = document.getElementById('ar-scene')
+  if (scene) {
+    scene.addEventListener('realityready', hideStartOverlay, {once: true})
+  }
+
+  const startedAt = Date.now()
+  const poll = setInterval(() => {
+    const xrextrasUi =
+      document.querySelector('#xrextras-loading') ||
+      document.querySelector('.xrextras-loading') ||
+      document.querySelector('[class*="xrextras-loading"]') ||
+      document.querySelector('[id*="xrextras-loading"]') ||
+      document.querySelector('[class*="xrextras"]')
+
+    if (xrextrasUi) {
+      hideStartOverlay()
+      clearInterval(poll)
+      return
+    }
+
+    if (Date.now() - startedAt > 8000) {
+      hideStartOverlay()
+      clearInterval(poll)
+    }
+  }, 100)
 }
 
 window.onload = () => {

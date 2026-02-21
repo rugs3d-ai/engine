@@ -132,6 +132,14 @@
     <!-- Container where the a-scene will be injected on "View in AR" click -->
     <div id="ar-container"></div>
 
+    <!-- Instant overlay shown after View in AR to hide black init frames -->
+    <div id="ar-start-overlay" style="display: none;">
+      <div class="ar-start-overlay-content">
+        <div class="ar-start-spinner"></div>
+        <div class="ar-start-text">Starting camera…</div>
+      </div>
+    </div>
+
     <!-- Back button - outside a-scene to stay on top -->
     <button id="back-btn" class="back-button" style="display: none;">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
