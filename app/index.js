@@ -88,15 +88,17 @@ const hideTapIndicator = () => {
   }
 }
 
-const showRulerInstruction = () => {
-  const el = document.getElementById('ruler-instruction')
-  if (el) {
-    el.style.display = 'block'
-    setTimeout(() => { el.style.opacity = '1' }, 50)
+const showToast = (msg, duration) => {
+  const el = document.getElementById('ar-toast')
+  if (!el) return
+  el.textContent = msg
+  el.style.display = 'block'
+  setTimeout(() => { el.style.opacity = '1' }, 30)
+  if (duration) {
     setTimeout(() => {
       el.style.opacity = '0'
       setTimeout(() => { el.style.display = 'none' }, 400)
-    }, 6000)
+    }, duration)
   }
 }
 
@@ -131,78 +133,64 @@ const roundRect = (ctx, x, y, w, h, r) => {
   ctx.closePath()
 }
 
-const createRulerReference = (artGroup) => {
-  const RULER_H = 0.3
-  const RULER_W = 0.025
-  const CANVAS_W = 200
-  const CANVAS_H = 2400
-
-  const canvas = document.createElement('canvas')
-  canvas.width = CANVAS_W
-  canvas.height = CANVAS_H
-  const ctx = canvas.getContext('2d')
-
-  ctx.fillStyle = '#ffffff'
-  roundRect(ctx, 0, 0, CANVAS_W, CANVAS_H, 12)
+const makeDimLabel = (text) => {
+  const c = document.createElement('canvas')
+  c.width = 256
+  c.height = 64
+  const ctx = c.getContext('2d')
+  ctx.fillStyle = 'rgba(0,0,0,0.7)'
+  roundRect(ctx, 0, 0, 256, 64, 10)
   ctx.fill()
-  ctx.strokeStyle = '#cccccc'
-  ctx.lineWidth = 2
-  roundRect(ctx, 1, 1, CANVAS_W - 2, CANVAS_H - 2, 12)
-  ctx.stroke()
-
-  const totalCm = 30
-  const pxPerCm = CANVAS_H / totalCm
-
-  for (let cm = 0; cm <= totalCm; cm++) {
-    const y = CANVAS_H - cm * pxPerCm
-    ctx.strokeStyle = '#333333'
-    if (cm % 5 === 0) {
-      ctx.lineWidth = 3
-      ctx.beginPath()
-      ctx.moveTo(0, y)
-      ctx.lineTo(CANVAS_W * 0.6, y)
-      ctx.stroke()
-      ctx.fillStyle = '#333333'
-      ctx.font = 'bold 48px Arial, sans-serif'
-      ctx.textAlign = 'right'
-      ctx.textBaseline = 'middle'
-      ctx.fillText(cm.toString(), CANVAS_W - 10, y)
-    } else {
-      ctx.lineWidth = 1.5
-      ctx.beginPath()
-      ctx.moveTo(0, y)
-      ctx.lineTo(CANVAS_W * 0.35, y)
-      ctx.stroke()
-    }
-  }
-
-  ctx.save()
-  ctx.translate(22, CANVAS_H / 2)
-  ctx.rotate(-Math.PI / 2)
-  ctx.fillStyle = '#999999'
-  ctx.font = '36px Arial, sans-serif'
+  ctx.fillStyle = '#ffffff'
+  ctx.font = 'bold 36px Arial, sans-serif'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.fillText('cm', 0, 0)
-  ctx.restore()
+  ctx.fillText(text, 128, 32)
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
+}
 
-  const texture = new THREE.CanvasTexture(canvas)
-  texture.colorSpace = THREE.SRGBColorSpace
-  const mat = new THREE.MeshBasicMaterial({map: texture, side: THREE.DoubleSide, transparent: true})
-  const geo = new THREE.PlaneGeometry(RULER_W, RULER_H)
-  const rulerMesh = new THREE.Mesh(geo, mat)
-
+const createDimensionArrows = (artGroup) => {
   const bbox = new THREE.Box3().setFromObject(artGroup)
-  const artWidth = bbox.max.x - bbox.min.x
-  const artHeight = bbox.max.y - bbox.min.y
+  const w = bbox.max.x - bbox.min.x
+  const h = bbox.max.y - bbox.min.y
+  const wCm = Math.round(w * 100)
+  const hCm = Math.round(h * 100)
 
-  const rulerX = artWidth / 2 + RULER_W / 2 + 0.01
-  const rulerY = bbox.max.y - RULER_H / 2
-  rulerMesh.position.set(rulerX, rulerY, 0.001)
+  const lineMat = new THREE.LineBasicMaterial({color: 0xffffff})
+  const gap = 0.015
+  const arrow = 0.008
+  const z = 0.001
 
-  artGroup.add(rulerMesh)
+  const addLine = (pts) => {
+    const geo = new THREE.BufferGeometry().setFromPoints(pts)
+    artGroup.add(new THREE.Line(geo, lineMat))
+  }
 
-  return rulerMesh
+  const bY = bbox.min.y - gap
+  addLine([new THREE.Vector3(bbox.min.x, bY, z), new THREE.Vector3(bbox.max.x, bY, z)])
+  addLine([new THREE.Vector3(bbox.min.x, bY - arrow, z), new THREE.Vector3(bbox.min.x, bY + arrow, z)])
+  addLine([new THREE.Vector3(bbox.max.x, bY - arrow, z), new THREE.Vector3(bbox.max.x, bY + arrow, z)])
+
+  const wLabelW = 0.07
+  const wLabelH = wLabelW * 0.25
+  const wMat = new THREE.MeshBasicMaterial({map: makeDimLabel(wCm + ' cm'), side: THREE.DoubleSide, transparent: true})
+  const wMesh = new THREE.Mesh(new THREE.PlaneGeometry(wLabelW, wLabelH), wMat)
+  wMesh.position.set((bbox.min.x + bbox.max.x) / 2, bY - wLabelH / 2 - 0.005, z)
+  artGroup.add(wMesh)
+
+  const rX = bbox.max.x + gap
+  addLine([new THREE.Vector3(rX, bbox.min.y, z), new THREE.Vector3(rX, bbox.max.y, z)])
+  addLine([new THREE.Vector3(rX - arrow, bbox.min.y, z), new THREE.Vector3(rX + arrow, bbox.min.y, z)])
+  addLine([new THREE.Vector3(rX - arrow, bbox.max.y, z), new THREE.Vector3(rX + arrow, bbox.max.y, z)])
+
+  const hLabelW = 0.07
+  const hLabelH = hLabelW * 0.25
+  const hMat = new THREE.MeshBasicMaterial({map: makeDimLabel(hCm + ' cm'), side: THREE.DoubleSide, transparent: true})
+  const hMesh = new THREE.Mesh(new THREE.PlaneGeometry(hLabelW, hLabelH), hMat)
+  hMesh.position.set(rX + hLabelW / 2 + 0.005, (bbox.min.y + bbox.max.y) / 2, z)
+  artGroup.add(hMesh)
 }
 
 const rugARScenePipelineModule = () => {
@@ -214,6 +202,7 @@ const rugARScenePipelineModule = () => {
 
   let placedArt = null
   let artModelTemplate = null
+  let modelLoaded = false
   const loader = new THREE.GLTFLoader()
 
   let scaleFactor = 1
@@ -253,6 +242,7 @@ const rugARScenePipelineModule = () => {
               }
             }
           })
+          modelLoaded = true
           console.log('Art model preloaded successfully')
           resolve(gltf)
         },
@@ -325,8 +315,8 @@ const rugARScenePipelineModule = () => {
         initialScale = {x: art.scale.x, y: art.scale.y, z: art.scale.z}
         scaleFactor = 1
         targetScaleFactor = 1
-        createRulerReference(art)
-        showRulerInstruction()
+        requestAnimationFrame(() => createDimensionArrows(art))
+        showToast('Pinch to scale \u2022 Drag to move', 4000)
       })
       .start()
   }
@@ -348,6 +338,7 @@ const rugARScenePipelineModule = () => {
       hideTapIndicator()
     } else {
       console.warn('Could not place art - model not loaded')
+      showToast('Loading model... please wait', 2000)
     }
   }
 
@@ -440,6 +431,8 @@ const rugARScenePipelineModule = () => {
         if (hitTestResults.length > 0) {
           const hit = hitTestResults[0]
           placeArt(hit.position, hit.rotation)
+        } else if (!placedArt) {
+          showToast('No surface detected \u2014 try a textured area', 2000)
         }
       }
       touchStartPos = null
@@ -493,11 +486,17 @@ const rugARScenePipelineModule = () => {
       })
 
       showOverlay()
-      setTimeout(() => {
-        tapEnabled = true
-        showTapIndicator()
-        console.log('Tap-to-place enabled')
-      }, 1000)
+      const enableWhenReady = () => {
+        if (modelLoaded) {
+          tapEnabled = true
+          showTapIndicator()
+          console.log('Tap-to-place enabled')
+        } else {
+          showToast('Loading model...', 1500)
+          setTimeout(enableWhenReady, 500)
+        }
+      }
+      setTimeout(enableWhenReady, 1000)
     },
   }
 }

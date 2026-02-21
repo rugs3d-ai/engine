@@ -238,7 +238,7 @@
 	 display: none !important;
 	}
 
-	#ruler-instruction {
+	#ar-toast {
 	 position: fixed;
 	 bottom: 100px;
 	 left: 50%;
