@@ -203,6 +203,7 @@ const rugARScenePipelineModule = () => {
 
   let placedArt = null
   let artModelTemplate = null
+  let modelLoaded = false
   const loader = new THREE.GLTFLoader()
 
   let scaleFactor = 1
@@ -242,6 +243,7 @@ const rugARScenePipelineModule = () => {
               }
             }
           })
+          modelLoaded = true
           console.log('Art model preloaded successfully')
           resolve(gltf)
         },
@@ -481,11 +483,16 @@ const rugARScenePipelineModule = () => {
       })
 
       showOverlay()
-      setTimeout(() => {
-        tapEnabled = true
-        showTapIndicator()
-        console.log('Tap-to-place enabled')
-      }, 1000)
+      const enableWhenReady = () => {
+        if (modelLoaded) {
+          tapEnabled = true
+          showTapIndicator()
+          console.log('Tap-to-place enabled')
+        } else {
+          setTimeout(enableWhenReady, 200)
+        }
+      }
+      setTimeout(enableWhenReady, 1000)
     },
   }
 }
