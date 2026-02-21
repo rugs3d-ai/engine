@@ -38,6 +38,59 @@ const enableARButton = () => {
   document.getElementById('btn-text').textContent = 'View in AR'
 }
 
+AFRAME.registerComponent('grid-material', {
+  init() {
+    const canvas = document.createElement('canvas')
+    canvas.width = 256
+    canvas.height = 256
+    const ctx = canvas.getContext('2d')
+
+    ctx.fillStyle = 'rgba(121, 22, 255, 0.1)'
+    ctx.fillRect(0, 0, 256, 256)
+
+    ctx.strokeStyle = 'rgba(121, 22, 255, 0.35)'
+    ctx.lineWidth = 1
+    const step = 32
+    for (let i = 0; i <= 256; i += step) {
+      ctx.beginPath()
+      ctx.moveTo(i, 0)
+      ctx.lineTo(i, 256)
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.moveTo(0, i)
+      ctx.lineTo(256, i)
+      ctx.stroke()
+    }
+
+    ctx.strokeStyle = 'rgba(121, 22, 255, 0.7)'
+    ctx.lineWidth = 3
+    ctx.beginPath()
+    ctx.moveTo(0, 256)
+    ctx.lineTo(256, 256)
+    ctx.stroke()
+
+    ctx.strokeStyle = 'rgba(121, 22, 255, 0.5)'
+    ctx.lineWidth = 2
+    ctx.strokeRect(0, 0, 256, 256)
+
+    const texture = new THREE.CanvasTexture(canvas)
+    const material = new THREE.MeshBasicMaterial({
+      map: texture,
+      transparent: true,
+      opacity: 0.85,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    })
+
+    const applyMat = () => {
+      const mesh = this.el.getObject3D('mesh')
+      if (mesh) { mesh.material = material }
+    }
+    applyMat()
+    this.el.addEventListener('loaded', applyMat)
+  },
+})
+
 AFRAME.registerComponent('configure-rug-material', {
   init() {
     this.el.addEventListener('model-loaded', () => {

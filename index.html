@@ -86,10 +86,10 @@
         </a-entity>
         <a-light type="ambient" intensity="0.8"></a-light>
 
-        <!-- Wall base marker - L-shaped hinge (align corner with wall-floor corner) -->
+        <!-- Wall base marker - thin grid planes hugging floor + wall -->
         <a-entity id="wall-marker" visible="false">
-          <a-box color="#7916ff" width="0.5" height="0.02" depth="0.25" material="opacity: 0.7" position="0 0.01 0.125"></a-box>
-          <a-box color="#7916ff" width="0.5" height="0.25" depth="0.02" material="opacity: 0.7" position="0 0.125 -0.01"></a-box>
+          <a-plane width="0.6" height="0.4" rotation="-90 0 0" position="0 0.003 0.2" grid-material></a-plane>
+          <a-plane width="0.6" height="0.4" position="0 0.2 -0.003" grid-material></a-plane>
         </a-entity>
 
         <!-- Wall art entity (hidden until wall is created) with gesture components -->
