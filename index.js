@@ -55,10 +55,14 @@ AFRAME.registerComponent('tap-place-rug', {
       const rug = document.getElementById('placed-rug')
       if (!rug) return
 
+      const camera = document.getElementById('camera')
+      const camY = THREE.MathUtils.radToDeg(camera.object3D.rotation.y)
+
       if (!rugPlaced) {
         rug.setAttribute('scale', '0.01 0.01 0.01')
         rug.setAttribute('visible', 'true')
-        rug.setAttribute('position', point.x + ' 0.01 ' + point.z)
+        rug.setAttribute('position', point.x + ' 1.5 ' + point.z)
+        rug.setAttribute('rotation', '0 ' + camY + ' 0')
         rug.setAttribute('animation', {
           property: 'scale',
           to: '1 1 1',
@@ -68,7 +72,8 @@ AFRAME.registerComponent('tap-place-rug', {
         rugPlaced = true
         hideTapIndicator()
       } else {
-        rug.setAttribute('position', point.x + ' 0.01 ' + point.z)
+        rug.setAttribute('position', point.x + ' 1.5 ' + point.z)
+        rug.setAttribute('rotation', '0 ' + camY + ' 0')
       }
     })
   },

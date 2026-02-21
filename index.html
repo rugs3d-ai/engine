@@ -30,8 +30,8 @@
     <div id="preview-page">
       <model-viewer
         id="model-viewer"
-        src="https://sewcrqgjitpwnfjxnkns.supabase.co/storage/v1/object/public/carpet-images/77de5373-12d7-4c05-97a5-6b12b076480e/models/carpet-3d-IMG_1878-mode2-1766757200493.glb"
-        alt="3D Rug Preview"
+                src="https://dfcksvowcprcrpfptk.supabase.co/storage/v1/object/public/3d-models/models/2A0pQDoKVq/carpet_model_20260210_094217.glb"
+                alt="3D Wall Art Preview"
         camera-controls
         touch-action="pan-y"
         auto-rotate
@@ -66,8 +66,8 @@
         <a-assets>
           <a-asset-item
             id="rugModel"
-            src="https://sewcrqgjitpwnfjxnkns.supabase.co/storage/v1/object/public/carpet-images/77de5373-12d7-4c05-97a5-6b12b076480e/models/carpet-3d-IMG_1878-mode2-1766757200493.glb">
-          </a-asset-item>
+                      src="https://dfcksvowcprcrpfptk.supabase.co/storage/v1/object/public/3d-models/models/2A0pQDoKVq/carpet_model_20260210_094217.glb">
+                    </a-asset-item>
         </a-assets>
 
         <a-camera
@@ -86,7 +86,7 @@
         </a-entity>
         <a-light type="ambient" intensity="0.8"></a-light>
 
-        <!-- Pre-placed rug entity (hidden until tap) with all gesture components attached -->
+        <!-- Pre-placed wall art entity (hidden until tap) with gesture components -->
         <a-entity
           id="placed-rug"
           gltf-model="#rugModel"
@@ -94,7 +94,6 @@
           position="0 -999 0"
           scale="1 1 1"
           class="cantap"
-          xrextras-hold-drag="rise-height: 0"
           xrextras-two-finger-rotate
           xrextras-pinch-scale="min: 0.3; max: 3"
           configure-rug-material
@@ -127,7 +126,7 @@
     <div id="tap-indicator" style="display: none;">
       <div class="tap-circle tap-circle-outer"></div>
       <div class="tap-circle tap-circle-inner"></div>
-      <span class="tap-text">Tap to place</span>
+      <span class="tap-text">Tap to place on wall</span>
     </div>
   </body>
 </html>
