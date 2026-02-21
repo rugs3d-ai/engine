@@ -186,8 +186,11 @@ const createDimensionArrows = (artGroup, localBbox) => {
   const z = 0.003
   const thick = 0.002
 
+  const strips = []
   const addStrip = (x1, y1, x2, y2) => {
-    makeGlowStrip(x1, y1, x2, y2, z, thick).forEach(m => artGroup.add(m))
+    const meshes = makeGlowStrip(x1, y1, x2, y2, z, thick)
+    meshes.forEach(m => artGroup.add(m))
+    strips.push(...meshes)
   }
 
   const tY = localBbox.max.y + gap
@@ -210,7 +213,7 @@ const createDimensionArrows = (artGroup, localBbox) => {
   hSprite.center.set(0.5, 0.5)
   artGroup.add(hSprite)
 
-  return [wSprite, hSprite]
+  return {sprites: [wSprite, hSprite], strips}
 }
 
 const rugARScenePipelineModule = () => {
@@ -223,7 +226,7 @@ const rugARScenePipelineModule = () => {
   let placedArt = null
   let artModelTemplate = null
   let modelLoaded = false
-  let dimSprites = []
+  let dimElements = null
   const loader = new THREE.GLTFLoader()
 
   let scaleFactor = 1
@@ -338,7 +341,7 @@ const rugARScenePipelineModule = () => {
         targetScaleFactor = 1
         const localBbox = new THREE.Box3().setFromObject(artModelTemplate)
         requestAnimationFrame(() => {
-          dimSprites = createDimensionArrows(art, localBbox)
+          dimElements = createDimensionArrows(art, localBbox)
         })
         showToast('Pinch to scale \u2022 Drag to move', 4000)
       })
@@ -484,14 +487,18 @@ const rugARScenePipelineModule = () => {
             placedArt.position.lerp(dragTarget, dragLerpFactor)
           }
 
-          if (dimSprites.length > 0) {
+          if (dimElements) {
             const cam = XR8.Threejs.xrScene().camera
             const tempVec = new THREE.Vector3()
-            dimSprites.forEach((sprite) => {
-              sprite.getWorldPosition(tempVec)
-              const dist = cam.position.distanceTo(tempVec)
-              const s = dist * 0.12
-              sprite.scale.set(s, s * 0.25, 1)
+            placedArt.getWorldPosition(tempVec)
+            const dist = cam.position.distanceTo(tempVec)
+            const spriteS = dist * 0.12
+            dimElements.sprites.forEach((sprite) => {
+              sprite.scale.set(spriteS, spriteS * 0.25, 1)
+            })
+            const stripScale = Math.max(1, dist * 0.8)
+            dimElements.strips.forEach((mesh) => {
+              mesh.scale.y = stripScale
             })
           }
 
