@@ -22,7 +22,7 @@ const showTapIndicator = () => {
 }
 
 let arSceneInjected = false
-
+let preClonedScene = null
 
 AFRAME.registerComponent('grid-material', {
   schema: {type: {type: 'string', default: 'wall'}},
@@ -294,63 +294,51 @@ AFRAME.registerComponent('ar-place', {
   },
 })
 
-const showStartOverlay = () => {
-  const overlay = document.getElementById('ar-start-overlay')
-  if (overlay) overlay.style.display = 'flex'
-}
-
-const hideStartOverlay = () => {
-  const overlay = document.getElementById('ar-start-overlay')
-  if (overlay) overlay.style.display = 'none'
-}
-
-const injectArScene = () => {
-  if (arSceneInjected) return
-  arSceneInjected = true
-
-  showStartOverlay()
-  document.getElementById('preview-page').style.display = 'none'
-  document.getElementById('back-btn').style.display = 'flex'
-
-  const template = document.getElementById('ar-scene-template')
-  const clone = template.content.cloneNode(true)
-  document.getElementById('ar-container').appendChild(clone)
-
-  const scene = document.getElementById('ar-scene')
-  if (scene) {
-    scene.addEventListener('realityready', hideStartOverlay, {once: true})
-  }
-
-  const startedAt = Date.now()
-  const poll = setInterval(() => {
-    const xrextrasUi =
-      document.querySelector('#xrextras-loading') ||
-      document.querySelector('.xrextras-loading') ||
-      document.querySelector('[class*="xrextras-loading"]') ||
-      document.querySelector('[id*="xrextras-loading"]') ||
-      document.querySelector('[class*="xrextras"]')
-
-    if (xrextrasUi) {
-      hideStartOverlay()
-      clearInterval(poll)
-      return
-    }
-
-    if (Date.now() - startedAt > 8000) {
-      hideStartOverlay()
-      clearInterval(poll)
-    }
-  }, 100)
+const hidePreview = () => {
+  const el = document.getElementById('preview-page')
+  if (!el || el.style.display === 'none') return
+  el.classList.add('fade-out')
+  setTimeout(() => { el.style.display = 'none' }, 300)
 }
 
 const startAR = () => {
   if (arSceneInjected) return
-  injectArScene()
+  arSceneInjected = true
+
+  document.getElementById('back-btn').style.display = 'flex'
+
+  const clone = preClonedScene || document.getElementById('ar-scene-template').content.cloneNode(true)
+  preClonedScene = null
+  document.getElementById('ar-container').appendChild(clone)
+
+  const scene = document.getElementById('ar-scene')
+  if (scene) {
+    scene.addEventListener('realityready', hidePreview, {once: true})
+  }
+
+  const poll = setInterval(() => {
+    const xrUi =
+      document.querySelector('.xrextras-loading') ||
+      document.querySelector('#xrextras-loading') ||
+      document.querySelector('[class*="xrextras-loading"]')
+
+    if (xrUi) {
+      hidePreview()
+      clearInterval(poll)
+      return
+    }
+  }, 80)
+
+  setTimeout(() => { clearInterval(poll); hidePreview() }, 12000)
 }
 
 const initPage = () => {
-  const btn = document.getElementById('view-ar-btn')
-  btn.addEventListener('click', startAR)
+  const template = document.getElementById('ar-scene-template')
+  if (template) {
+    preClonedScene = template.content.cloneNode(true)
+  }
+
+  document.getElementById('view-ar-btn').addEventListener('click', startAR)
 
   document.getElementById('back-btn').addEventListener('click', () => {
     window.location.reload()
@@ -365,11 +353,13 @@ const initPage = () => {
     })
   })
 
-  const mv = document.getElementById('model-viewer')
-  if (mv) {
-    mv.addEventListener('error', (e) => { dbg('model-viewer ERROR: ' + (e.detail ? JSON.stringify(e.detail) : e.type)) })
-    mv.addEventListener('load', () => { dbg('model-viewer loaded OK') })
-  }
+  setTimeout(() => {
+    if (arSceneInjected) return
+    const s = document.createElement('script')
+    s.type = 'module'
+    s.src = 'https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js'
+    document.head.appendChild(s)
+  }, 1500)
 }
 
 if (document.readyState === 'loading') {

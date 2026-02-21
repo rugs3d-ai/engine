@@ -9,14 +9,12 @@
     <title>Rugs3D - AR Experience</title>
     <link rel="stylesheet" type="text/css" href="index.css">
 
+    <!-- Warm up CDN connection -->
     <link rel="preconnect" href="https://cdn.8thwall.com" crossorigin>
-    <link rel="preconnect" href="https://ajax.googleapis.com" crossorigin>
     <link rel="dns-prefetch" href="//cdn.8thwall.com">
-    <link rel="dns-prefetch" href="//ajax.googleapis.com">
-    <link rel="preload" href="./xr.js" as="script">
 
-    <!-- Google Model Viewer for 3D preview -->
-    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+    <!-- Preload heaviest self-hosted chunk (5.3 MB) so it downloads in parallel with xr.js -->
+    <link rel="preload" href="./xr-slam.js" as="script">
 
     <!-- 8-Frame: 8th Wall's patched A-Frame (includes Three.js) -->
     <script defer src="//cdn.8thwall.com/web/aframe/8frame-1.4.1.min.js"></script>
@@ -32,12 +30,12 @@
   </head>
 
   <body>
-    <!-- Preview Page - shown by default -->
+    <!-- Preview Page - position:fixed overlay that stays on top until XRExtras UI is ready -->
     <div id="preview-page">
       <model-viewer
         id="model-viewer"
-                                src="./carpet_model_20260210_094217.glb"
-                        alt="3D Wall Art Preview"
+        src="./carpet_model_20260210_094217.glb"
+        alt="3D Wall Art Preview"
         camera-controls
         touch-action="pan-y"
         shadow-intensity="1"
@@ -71,8 +69,8 @@
         <a-assets>
           <a-asset-item
             id="rugModel"
-                                          src="./carpet_model_20260210_094217.glb">
-                              </a-asset-item>
+            src="./carpet_model_20260210_094217.glb">
+          </a-asset-item>
         </a-assets>
 
         <a-camera
@@ -136,14 +134,6 @@
 
     <!-- Container where the a-scene will be injected on "View in AR" click -->
     <div id="ar-container"></div>
-
-    <!-- Instant overlay shown after View in AR to hide black init frames -->
-    <div id="ar-start-overlay" style="display: none;">
-      <div class="ar-start-overlay-content">
-        <div class="ar-start-spinner"></div>
-        <div class="ar-start-text">Starting camera…</div>
-      </div>
-    </div>
 
     <!-- Back button - outside a-scene to stay on top -->
     <button id="back-btn" class="back-button" style="display: none;">
