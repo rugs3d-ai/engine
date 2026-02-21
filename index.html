@@ -88,8 +88,8 @@
 
         <!-- Wall base marker - thin grid planes hugging floor + wall -->
         <a-entity id="wall-marker" visible="false">
-          <a-plane width="0.6" height="0.4" rotation="-90 0 0" position="0 0.003 0.2" grid-material></a-plane>
-          <a-plane width="0.6" height="0.4" position="0 0.2 -0.003" grid-material></a-plane>
+          <a-plane width="0.6" height="0.4" rotation="-90 0 0" position="0 0.003 0.2" grid-material="type: floor"></a-plane>
+          <a-plane width="0.6" height="0.4" position="0 0.2 -0.003" grid-material="type: wall"></a-plane>
         </a-entity>
 
         <!-- Wall art entity (hidden until wall is created) with gesture components -->

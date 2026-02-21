@@ -39,16 +39,22 @@ const enableARButton = () => {
 }
 
 AFRAME.registerComponent('grid-material', {
+  schema: {type: {type: 'string', default: 'wall'}},
   init() {
+    const isFloor = this.data.type === 'floor'
     const canvas = document.createElement('canvas')
     canvas.width = 256
     canvas.height = 256
     const ctx = canvas.getContext('2d')
 
-    ctx.fillStyle = 'rgba(121, 22, 255, 0.3)'
+    const fill = isFloor ? 'rgba(0, 180, 255, 0.3)' : 'rgba(121, 22, 255, 0.3)'
+    const grid = isFloor ? 'rgba(255, 255, 255, 0.5)' : 'rgba(255, 255, 255, 0.6)'
+    const edge = isFloor ? 'rgba(0, 180, 255, 0.8)' : 'rgba(121, 22, 255, 0.8)'
+
+    ctx.fillStyle = fill
     ctx.fillRect(0, 0, 256, 256)
 
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'
+    ctx.strokeStyle = grid
     ctx.lineWidth = 1.5
     const step = 32
     for (let i = 0; i <= 256; i += step) {
@@ -69,7 +75,7 @@ AFRAME.registerComponent('grid-material', {
     ctx.lineTo(256, 256)
     ctx.stroke()
 
-    ctx.strokeStyle = 'rgba(121, 22, 255, 0.8)'
+    ctx.strokeStyle = edge
     ctx.lineWidth = 3
     ctx.strokeRect(0, 0, 256, 256)
 
