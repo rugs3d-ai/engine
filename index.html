@@ -1,0 +1,110 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <title>Rugs3D - AR Experience</title>
+    <link rel="stylesheet" type="text/css" href="index.css">
+
+    <!-- Google Model Viewer for 3D preview -->
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+
+    <!-- 8-Frame: 8th Wall's patched A-Frame (includes Three.js) -->
+    <script src="//cdn.8thwall.com/web/aframe/8frame-1.4.1.min.js"></script>
+
+    <!-- XR Extras - provides gesture components, loading screen, error handling -->
+    <script src="https://cdn.8thwall.com/web/xrextras/xrextras.js"></script>
+
+    <!-- 8th Wall Self-Hosted Engine - World Effects (SLAM) -->
+    <script async src="./xr.js" data-preload-chunks="slam"></script>
+
+    <!-- Client code (A-Frame components + page logic) -->
+    <script src="index.js"></script>
+  </head>
+
+  <body>
+    <!-- Preview Page - shown by default -->
+    <div id="preview-page">
+      <model-viewer
+        id="model-viewer"
+        src="https://sewcrqgjitpwnfjxnkns.supabase.co/storage/v1/object/public/carpet-images/77de5373-12d7-4c05-97a5-6b12b076480e/models/carpet-3d-IMG_1878-mode2-1766757200493.glb"
+        alt="3D Rug Preview"
+        camera-controls
+        touch-action="pan-y"
+        auto-rotate
+        shadow-intensity="1"
+        exposure="1"
+      ></model-viewer>
+      <button id="view-ar-btn" class="view-ar-button">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        View in AR
+      </button>
+    </div>
+
+    <!-- AR Scene (A-Frame) - hidden by default -->
+    <a-scene
+      id="ar-scene"
+      xrextras-gesture-detector
+      xrextras-loading
+      xrextras-runtime-error
+      xrweb="scale: absolute"
+      renderer="colorManagement: true"
+      tap-place-rug
+      style="display: none;">
+
+      <a-assets>
+        <a-asset-item
+          id="rugModel"
+          src="https://sewcrqgjitpwnfjxnkns.supabase.co/storage/v1/object/public/carpet-images/77de5373-12d7-4c05-97a5-6b12b076480e/models/carpet-3d-IMG_1878-mode2-1766757200493.glb">
+        </a-asset-item>
+      </a-assets>
+
+      <a-camera
+        id="camera"
+        position="0 1.6 0"
+        raycaster="objects: .cantap"
+        cursor="fuse: false; rayOrigin: mouse;">
+      </a-camera>
+
+      <a-entity
+        light="type: directional; intensity: 0.8"
+        position="0 10 0">
+      </a-entity>
+      <a-entity
+        light="type: hemisphere; color: #ffffff; groundColor: #444444; intensity: 1">
+      </a-entity>
+      <a-light type="ambient" intensity="0.8"></a-light>
+
+      <a-plane
+        id="ground"
+        class="cantap"
+        rotation="-90 0 0"
+        width="100"
+        height="100"
+        material="shader: shadow; transparent: true; opacity: 0.3"
+        shadow>
+      </a-plane>
+    </a-scene>
+
+    <!-- Back button - outside a-scene to stay on top -->
+    <button id="back-btn" class="back-button" style="display: none;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+
+    <!-- Tap gesture indicator - outside a-scene to avoid z-index conflicts -->
+    <div id="tap-indicator" style="display: none;">
+      <div class="tap-circle tap-circle-outer"></div>
+      <div class="tap-circle tap-circle-inner"></div>
+      <span class="tap-text">Tap to place</span>
+    </div>
+  </body>
+</html>
