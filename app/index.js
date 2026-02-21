@@ -2,7 +2,7 @@
 // Self-hosted 8th Wall engine for World Effects (SLAM tracking)
 // Branding hidden via CSS
 
-/* globals XR8 XRExtras CoachingOverlay THREE TWEEN */
+/* globals XR8 XRExtras THREE TWEEN */
 
 // GLB model URL (Supabase)
 const RUG_MODEL_URL = 'https://dfcksvowcprcrpkpfptk.supabase.co/storage/v1/object/public/3d-models/models/2A0pQDoKVq/carpet_model_20260210_094217.glb'
@@ -103,6 +103,95 @@ const showScaleLabel = (percent) => {
       label.classList.remove('fade-out')
     }, 300)
   }, 1000)
+}
+
+const roundRect = (ctx, x, y, w, h, r) => {
+  ctx.beginPath()
+  ctx.moveTo(x + r, y)
+  ctx.lineTo(x + w - r, y)
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r)
+  ctx.lineTo(x + w, y + h - r)
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h)
+  ctx.lineTo(x + r, y + h)
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r)
+  ctx.lineTo(x, y + r)
+  ctx.quadraticCurveTo(x, y, x + r, y)
+  ctx.closePath()
+}
+
+const createCreditCardReference = (artGroup) => {
+  const CARD_W = 0.0856
+  const CARD_H = 0.05398
+
+  const cardCanvas = document.createElement('canvas')
+  cardCanvas.width = 512
+  cardCanvas.height = 322
+  const ctx = cardCanvas.getContext('2d')
+
+  ctx.fillStyle = '#ffffff'
+  roundRect(ctx, 0, 0, 512, 322, 24)
+  ctx.fill()
+
+  ctx.strokeStyle = '#888888'
+  ctx.lineWidth = 4
+  ctx.setLineDash([12, 6])
+  roundRect(ctx, 8, 8, 496, 306, 20)
+  ctx.stroke()
+  ctx.setLineDash([])
+
+  ctx.fillStyle = '#333333'
+  ctx.font = 'bold 40px Arial, sans-serif'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('CREDIT CARD', 256, 130)
+
+  ctx.font = '30px Arial, sans-serif'
+  ctx.fillStyle = '#666666'
+  ctx.fillText('85.6 \u00D7 54 mm', 256, 190)
+
+  const cardTexture = new THREE.CanvasTexture(cardCanvas)
+  cardTexture.colorSpace = THREE.SRGBColorSpace
+  const cardMat = new THREE.MeshBasicMaterial({map: cardTexture, side: THREE.DoubleSide, transparent: true})
+  const cardGeo = new THREE.PlaneGeometry(CARD_W, CARD_H)
+  const cardMesh = new THREE.Mesh(cardGeo, cardMat)
+
+  const textCanvas = document.createElement('canvas')
+  textCanvas.width = 1024
+  textCanvas.height = 200
+  const tCtx = textCanvas.getContext('2d')
+
+  tCtx.fillStyle = 'rgba(0, 0, 0, 0.75)'
+  roundRect(tCtx, 0, 0, 1024, 200, 16)
+  tCtx.fill()
+
+  tCtx.fillStyle = '#ffffff'
+  tCtx.font = 'bold 32px Arial, sans-serif'
+  tCtx.textAlign = 'center'
+  tCtx.textBaseline = 'middle'
+  tCtx.fillText('Scale this to an actual credit card size', 512, 65)
+  tCtx.fillText('for true size idea of your art piece', 512, 115)
+
+  const textTexture = new THREE.CanvasTexture(textCanvas)
+  textTexture.colorSpace = THREE.SRGBColorSpace
+  const textW = 0.18
+  const textH = textW * (200 / 1024)
+  const textMat = new THREE.MeshBasicMaterial({map: textTexture, side: THREE.DoubleSide, transparent: true})
+  const textGeo = new THREE.PlaneGeometry(textW, textH)
+  const textMesh = new THREE.Mesh(textGeo, textMat)
+
+  const bbox = new THREE.Box3().setFromObject(artGroup)
+  const artWidth = bbox.max.x - bbox.min.x
+
+  const cardX = artWidth / 2 + CARD_W / 2 + 0.015
+  const cardY = (bbox.min.y + bbox.max.y) / 2 - CARD_H
+  cardMesh.position.set(cardX, cardY, 0.001)
+
+  textMesh.position.set(cardX, cardY + CARD_H / 2 + textH / 2 + 0.008, 0.001)
+
+  artGroup.add(cardMesh)
+  artGroup.add(textMesh)
+
+  return {cardMesh, textMesh}
 }
 
 const rugARScenePipelineModule = () => {
@@ -225,6 +314,7 @@ const rugARScenePipelineModule = () => {
         initialScale = {x: art.scale.x, y: art.scale.y, z: art.scale.z}
         scaleFactor = 1
         targetScaleFactor = 1
+        createCreditCardReference(art)
       })
       .start()
   }
@@ -345,8 +435,6 @@ const rugARScenePipelineModule = () => {
     }
   }
 
-  let coachingComplete = false
-
   return {
     name: 'rug-ar',
 
@@ -393,26 +481,17 @@ const rugARScenePipelineModule = () => {
       })
 
       showOverlay()
-    },
-
-    onUpdate: ({processCpuResult}) => {
-      if (!coachingComplete && processCpuResult.reality && processCpuResult.reality.trackingStatus === 'NORMAL') {
-        coachingComplete = true
+      setTimeout(() => {
         tapEnabled = true
         showTapIndicator()
-        console.log('Coaching complete - tap-to-place enabled')
-      }
+        console.log('Tap-to-place enabled')
+      }, 1000)
     },
   }
 }
 
 const onxrloaded = () => {
   XR8.XrController.configure({scale: 'absolute'})
-
-  CoachingOverlay.configure({
-    animationColor: '#ffffff',
-    promptText: 'Move your phone slowly to detect surfaces',
-  })
 
   XR8.addCameraPipelineModules([
     XR8.GlTextureRenderer.pipelineModule(),
@@ -422,7 +501,6 @@ const onxrloaded = () => {
     XRExtras.FullWindowCanvas.pipelineModule(),
     XRExtras.Loading.pipelineModule(),
     XRExtras.RuntimeError.pipelineModule(),
-    CoachingOverlay.pipelineModule(),
     rugARScenePipelineModule(),
   ])
 
