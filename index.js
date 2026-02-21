@@ -51,6 +51,7 @@ AFRAME.registerComponent('tap-place-rug', {
     let lastPinchDistance = 0
     let lastRotationAngle = 0
     let isPinching = false
+    let isDragging = false
 
     const getPinchDistance = (touches) => {
       const dx = touches[0].clientX - touches[1].clientX
@@ -62,6 +63,12 @@ AFRAME.registerComponent('tap-place-rug', {
       const dx = touches[1].clientX - touches[0].clientX
       const dy = touches[1].clientY - touches[0].clientY
       return Math.atan2(dy, dx)
+    }
+
+    const screenToNDC = (touch) => {
+      const x = (touch.clientX / window.innerWidth) * 2 - 1
+      const y = -(touch.clientY / window.innerHeight) * 2 + 1
+      return new THREE.Vector2(x, y)
     }
 
     sceneEl.addEventListener('realityready', () => {
@@ -83,21 +90,26 @@ AFRAME.registerComponent('tap-place-rug', {
 
         if (e.touches.length === 2 && placedRugObj) {
           isPinching = true
+          isDragging = false
           lastPinchDistance = getPinchDistance(e.touches)
           lastRotationAngle = getRotationAngle(e.touches)
           return
         }
 
         if (e.touches.length === 1) {
-          const touch = e.touches[0]
-          const tapX = (touch.clientX / window.innerWidth) * 2 - 1
-          const tapY = -(touch.clientY / window.innerHeight) * 2 + 1
+          raycaster.setFromCamera(screenToNDC(e.touches[0]), sceneEl.camera)
 
-          raycaster.setFromCamera(new THREE.Vector2(tapX, tapY), sceneEl.camera)
-          const intersects = raycaster.intersectObject(ground.object3D, true)
+          if (placedRugObj) {
+            const rugHits = raycaster.intersectObject(placedRugObj, true)
+            if (rugHits.length > 0) {
+              isDragging = true
+              return
+            }
+          }
 
-          if (intersects.length > 0) {
-            const point = intersects[0].point
+          const groundHits = raycaster.intersectObject(ground.object3D, true)
+          if (groundHits.length > 0) {
+            const point = groundHits[0].point
 
             if (!rugPlaced) {
               const rug = document.createElement('a-entity')
@@ -123,20 +135,26 @@ AFRAME.registerComponent('tap-place-rug', {
               rugPlaced = true
               hideTapIndicator()
             } else {
-              const rugEl = document.getElementById('placed-rug')
-              if (rugEl) {
-                rugEl.setAttribute('position', point.x + ' 0.01 ' + point.z)
-              }
+              placedRugObj.position.set(point.x, 0.01, point.z)
             }
           }
         }
       }, true)
 
       canvas.addEventListener('touchmove', (e) => {
-        if (!tapEnabled || !placedRugObj) return
+        if (!tapEnabled) return
         e.preventDefault()
 
-        if (isPinching && e.touches.length === 2) {
+        if (isDragging && e.touches.length === 1 && placedRugObj) {
+          raycaster.setFromCamera(screenToNDC(e.touches[0]), sceneEl.camera)
+          const groundHits = raycaster.intersectObject(ground.object3D, true)
+          if (groundHits.length > 0) {
+            placedRugObj.position.set(groundHits[0].point.x, 0.01, groundHits[0].point.z)
+          }
+          return
+        }
+
+        if (isPinching && e.touches.length === 2 && placedRugObj) {
           const newDistance = getPinchDistance(e.touches)
           const scaleFactor = newDistance / lastPinchDistance
           currentScale = Math.max(0.3, Math.min(3, currentScale * scaleFactor))
@@ -154,6 +172,9 @@ AFRAME.registerComponent('tap-place-rug', {
       canvas.addEventListener('touchend', (e) => {
         if (e.touches.length < 2) {
           isPinching = false
+        }
+        if (e.touches.length === 0) {
+          isDragging = false
         }
       }, true)
     })
