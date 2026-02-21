@@ -498,9 +498,8 @@ const rugARScenePipelineModule = () => {
             dimElements.sprites.forEach((sprite) => {
               sprite.scale.set(spriteS, spriteS * 0.25, 1)
             })
-            const stripScale = Math.max(1, dist * 0.8) * inv
             dimElements.strips.forEach((mesh) => {
-              mesh.scale.y = stripScale
+              mesh.scale.y = 1
             })
           }
 
