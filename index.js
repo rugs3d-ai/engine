@@ -4,6 +4,8 @@
 //
 // The <a-scene> lives inside a <template> tag so it does NOT auto-initialize
 // on page load. It is cloned into the DOM only when "View in AR" is clicked.
+// Touch events are handled directly on the canvas (matching the original
+// Three.js implementation) for reliable mobile tap/pinch/rotate.
 
 /* globals AFRAME THREE */
 
@@ -42,10 +44,28 @@ AFRAME.registerComponent('configure-rug-material', {
 AFRAME.registerComponent('tap-place-rug', {
   init() {
     const sceneEl = this.el
+    const raycaster = new THREE.Raycaster()
+    let placedRugObj = null
+    let currentScale = 1
+    let currentRotation = 0
+    let lastPinchDistance = 0
+    let lastRotationAngle = 0
+    let isPinching = false
+
+    const getPinchDistance = (touches) => {
+      const dx = touches[0].clientX - touches[1].clientX
+      const dy = touches[0].clientY - touches[1].clientY
+      return Math.sqrt(dx * dx + dy * dy)
+    }
+
+    const getRotationAngle = (touches) => {
+      const dx = touches[1].clientX - touches[0].clientX
+      const dy = touches[1].clientY - touches[0].clientY
+      return Math.atan2(dy, dx)
+    }
 
     sceneEl.addEventListener('realityready', () => {
       showTapIndicator()
-
       setTimeout(() => {
         tapEnabled = true
       }, 1000)
@@ -55,46 +75,87 @@ AFRAME.registerComponent('tap-place-rug', {
       const ground = document.getElementById('ground')
       if (!ground) return
 
-      ground.addEventListener('click', (e) => {
+      const canvas = sceneEl.canvas
+
+      canvas.addEventListener('touchstart', (e) => {
         if (!tapEnabled) return
-        if (!e.detail || !e.detail.intersection) return
+        e.preventDefault()
 
-        const point = e.detail.intersection.point
+        if (e.touches.length === 2 && placedRugObj) {
+          isPinching = true
+          lastPinchDistance = getPinchDistance(e.touches)
+          lastRotationAngle = getRotationAngle(e.touches)
+          return
+        }
 
-        if (!rugPlaced) {
-          const rug = document.createElement('a-entity')
-          rug.setAttribute('id', 'placed-rug')
-          rug.setAttribute('gltf-model', '#rugModel')
-          rug.setAttribute('position', point.x + ' 0.01 ' + point.z)
-          rug.setAttribute('scale', '0.01 0.01 0.01')
-          rug.setAttribute('class', 'cantap')
-          rug.setAttribute('shadow', 'receive: false; cast: false')
-          rug.setAttribute('xrextras-hold-drag', '')
-          rug.setAttribute('xrextras-two-finger-rotate', '')
-          rug.setAttribute('xrextras-pinch-scale', 'min: 0.3; max: 3')
-          rug.setAttribute('configure-rug-material', '')
+        if (e.touches.length === 1) {
+          const touch = e.touches[0]
+          const tapX = (touch.clientX / window.innerWidth) * 2 - 1
+          const tapY = -(touch.clientY / window.innerHeight) * 2 + 1
 
-          sceneEl.appendChild(rug)
+          raycaster.setFromCamera(new THREE.Vector2(tapX, tapY), sceneEl.camera)
+          const intersects = raycaster.intersectObject(ground.object3D, true)
 
-          rug.addEventListener('model-loaded', () => {
-            rug.setAttribute('visible', 'true')
-            rug.setAttribute('animation', {
-              property: 'scale',
-              to: '1 1 1',
-              easing: 'easeOutElastic',
-              dur: 500,
-            })
-          })
+          if (intersects.length > 0) {
+            const point = intersects[0].point
 
-          rugPlaced = true
-          hideTapIndicator()
-        } else {
-          const rug = document.getElementById('placed-rug')
-          if (rug) {
-            rug.setAttribute('position', point.x + ' 0.01 ' + point.z)
+            if (!rugPlaced) {
+              const rug = document.createElement('a-entity')
+              rug.setAttribute('id', 'placed-rug')
+              rug.setAttribute('gltf-model', '#rugModel')
+              rug.setAttribute('position', point.x + ' 0.01 ' + point.z)
+              rug.setAttribute('scale', '0.01 0.01 0.01')
+              rug.setAttribute('configure-rug-material', '')
+              sceneEl.appendChild(rug)
+
+              rug.addEventListener('model-loaded', () => {
+                placedRugObj = rug.object3D
+                currentScale = 1
+                currentRotation = 0
+                rug.setAttribute('animation', {
+                  property: 'scale',
+                  to: '1 1 1',
+                  easing: 'easeOutQuad',
+                  dur: 500,
+                })
+              })
+
+              rugPlaced = true
+              hideTapIndicator()
+            } else {
+              const rugEl = document.getElementById('placed-rug')
+              if (rugEl) {
+                rugEl.setAttribute('position', point.x + ' 0.01 ' + point.z)
+              }
+            }
           }
         }
-      })
+      }, true)
+
+      canvas.addEventListener('touchmove', (e) => {
+        if (!tapEnabled || !placedRugObj) return
+        e.preventDefault()
+
+        if (isPinching && e.touches.length === 2) {
+          const newDistance = getPinchDistance(e.touches)
+          const scaleFactor = newDistance / lastPinchDistance
+          currentScale = Math.max(0.3, Math.min(3, currentScale * scaleFactor))
+          placedRugObj.scale.set(currentScale, currentScale, currentScale)
+          lastPinchDistance = newDistance
+
+          const newAngle = getRotationAngle(e.touches)
+          const angleDelta = newAngle - lastRotationAngle
+          currentRotation += angleDelta
+          placedRugObj.rotation.y = currentRotation
+          lastRotationAngle = newAngle
+        }
+      }, {passive: false, capture: true})
+
+      canvas.addEventListener('touchend', (e) => {
+        if (e.touches.length < 2) {
+          isPinching = false
+        }
+      }, true)
     })
   },
 })
