@@ -76,14 +76,17 @@ AFRAME.registerComponent('wall-place', {
       showTapIndicator()
       document.getElementById('wall-marker').setAttribute('visible', 'true')
       dbg('Phase: floor - point at wall base')
-    })
 
-    this.el.addEventListener('click', () => {
-      if (this.phase === 'floor') {
-        this.createWall()
-      } else if (this.phase === 'wall') {
-        this.lockArt()
-      }
+      let touchStart = 0
+      this.el.canvas.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) touchStart = Date.now()
+      })
+      this.el.canvas.addEventListener('touchend', (e) => {
+        if (e.changedTouches.length === 1 && Date.now() - touchStart < 400) {
+          if (this.phase === 'floor') this.createWall()
+          else if (this.phase === 'wall') this.lockArt()
+        }
+      })
     })
   },
 
