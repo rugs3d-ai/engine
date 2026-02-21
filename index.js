@@ -190,8 +190,6 @@ AFRAME.registerComponent('ar-place', {
 
     if (mode === 'wall') {
       document.getElementById('wall-marker').setAttribute('visible', 'true')
-      setTapText('Align corner with wall base & tap')
-      showTapIndicator()
     } else {
       document.getElementById('floor-marker').setAttribute('visible', 'true')
     }
@@ -246,7 +244,8 @@ AFRAME.registerComponent('ar-place', {
     art.setAttribute('scale', '1 1 1')
 
     this.phase = 'wall-aim'
-    setTapText('Tap to place on wall')
+    setTapText('Position & tap')
+    showTapIndicator()
     document.getElementById('crosshair').style.display = 'block'
     dbg('Wall: aim at wall to position art')
   },
@@ -274,15 +273,6 @@ AFRAME.registerComponent('ar-place', {
           const marker = document.getElementById('wall-marker')
           marker.object3D.position.lerp(hits[0].point, 0.4)
           marker.object3D.rotation.y = this.cameraEl.object3D.rotation.y
-
-          const wallCenter = marker.object3D.position.clone()
-          wallCenter.y += 0.2
-          const screenPos = wallCenter.project(this.threeCamera)
-          const tapEl = document.getElementById('tap-indicator')
-          if (tapEl) {
-            tapEl.style.left = ((screenPos.x * 0.5 + 0.5) * 100) + '%'
-            tapEl.style.top = ((-screenPos.y * 0.5 + 0.5) * 100) + '%'
-          }
         } else {
           const marker = document.getElementById('floor-marker')
           const pt = hits[0].point
@@ -297,6 +287,13 @@ AFRAME.registerComponent('ar-place', {
         const art = document.getElementById('placed-rug')
         art.object3D.position.lerp(hits[0].point, 0.4)
         art.object3D.rotation.y = this.wallEl.object3D.rotation.y
+
+        const screenPos = hits[0].point.clone().project(this.threeCamera)
+        const tapEl = document.getElementById('tap-indicator')
+        if (tapEl) {
+          tapEl.style.left = ((screenPos.x * 0.5 + 0.5) * 100) + '%'
+          tapEl.style.top = ((-screenPos.y * 0.5 + 0.5) * 100) + '%'
+        }
       }
     }
   },
