@@ -4,21 +4,10 @@
 
 /* globals XR8 XRExtras THREE TWEEN */
 
-performance.mark('rugs3d-script-start')
-
 const RUG_MODEL_URL = 'https://dfcksvowcprcrpkpfptk.supabase.co/storage/v1/object/public/3d-models/models/2A0pQDoKVq/carpet_model_20260210_094217.glb'
 
 let arStarted = false
 let tapEnabled = false
-
-const perfLog = (label) => {
-  performance.mark('rugs3d-' + label)
-  try {
-    performance.measure(label, 'rugs3d-script-start', 'rugs3d-' + label)
-    const entry = performance.getEntriesByName(label).pop()
-    console.log('[Perf] ' + label + ': ' + Math.round(entry.duration) + 'ms')
-  } catch (e) { /* ignore */ }
-}
 
 const showPreview = () => {
   document.getElementById('preview-page').style.display = 'flex'
@@ -378,7 +367,7 @@ const rugARScenePipelineModule = () => {
             }
           })
           modelLoaded = true
-          perfLog('glb-model-loaded')
+          console.log('Art model preloaded successfully')
           resolve(gltf)
         },
         (progress) => {
@@ -700,7 +689,6 @@ const rugARScenePipelineModule = () => {
     name: 'rug-ar',
 
     onStart: ({canvas}) => {
-      perfLog('ar-pipeline-onstart')
       const {scene, camera, renderer} = XR8.Threejs.xrScene()
       initXrScene({scene, camera, renderer})
 
@@ -817,7 +805,6 @@ const rugARScenePipelineModule = () => {
 }
 
 const onxrloaded = () => {
-  perfLog('xr-loaded-callback')
   XR8.XrController.configure({scale: 'absolute'})
 
   XR8.addCameraPipelineModules([
@@ -835,7 +822,6 @@ const onxrloaded = () => {
 }
 
 const startAR = () => {
-  perfLog('ar-button-clicked')
   showARView()
   XRExtras.Loading.showLoading({onxrloaded})
 }
@@ -849,23 +835,16 @@ const enableARButton = () => {
 
 const waitForARReady = () => {
   const check = () => {
-    const xrReady = typeof XRExtras !== 'undefined'
-    const xr8Ready = typeof XR8 !== 'undefined'
-    if (!xrReady) perfLog('waiting-xrextras')
-    if (!xr8Ready) perfLog('waiting-xr8')
-    if (xrReady && xr8Ready) {
-      perfLog('ar-scripts-ready')
+    if (typeof XRExtras !== 'undefined' && typeof XR8 !== 'undefined') {
       enableARButton()
-      perfLog('button-enabled')
     } else {
-      setTimeout(check, 100)
+      setTimeout(check, 200)
     }
   }
   check()
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  perfLog('dom-content-loaded')
   const arBtn = document.getElementById('view-ar-btn')
   arBtn.disabled = true
   arBtn.classList.add('loading')

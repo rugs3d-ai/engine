@@ -6,27 +6,14 @@
 	   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 	   <meta name="apple-mobile-web-app-capable" content="yes">
 	   <meta name="mobile-web-app-capable" content="yes">
-
-	   <!-- Preload critical AR scripts FIRST (highest priority) -->
-	   <link rel="preload" href="./xr.js" as="script" fetchpriority="high">
-	   <link rel="preload" href="https://cdn.8thwall.com/web/xrextras/xrextras.js" as="script" crossorigin fetchpriority="high">
-
-	   <!-- Preconnect to CDNs we'll need later -->
-	   <link rel="preconnect" href="https://unpkg.com" crossorigin>
-	   <link rel="preconnect" href="https://ajax.googleapis.com" crossorigin>
-	   <link rel="preconnect" href="https://cdn.8thwall.com" crossorigin>
-	   <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-
-	   <!-- Preload GLB model (browser caches it for both model-viewer and GLTFLoader) -->
-	   <link rel="preload" href="https://dfcksvowcprcrpkpfptk.supabase.co/storage/v1/object/public/3d-models/models/2A0pQDoKVq/carpet_model_20260210_094217.glb" as="fetch" crossorigin>
-
+	  
 	   <title>Rugs3D - AR Experience</title>
 	   <link rel="stylesheet" type="text/css" href="index.css">
-
+	
 	   <!-- Google Model Viewer for 3D preview -->
 	   <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
-
-	   <!-- Three.js import map + eager load (XR8.Threejs needs THREE global at init) -->
+	
+	   <!-- Three.js 160+ requires the use of import maps -->
 	   <script type="importmap">
 	     {
 	       "imports": {
@@ -35,23 +22,27 @@
 	       }
 	     }
 	   </script>
-
+	
 	   <script type="module">
 	     import * as THREE from 'three';
 	     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+	
 	     window.THREE = { ...THREE };
 	     window.THREE.GLTFLoader = GLTFLoader;
 	   </script>
+	
+	   <!-- Javascript tweening engine -->
+	   <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/16.3.5/Tween.min.js"></script>
+	
+    <!-- XR Extras - needed for proper initialization (UI hidden via CSS) -->
+ 	   <script src="https://cdn.8thwall.com/web/xrextras/xrextras.js"></script>
 
-	   <!-- Tween + XR Extras (async to not block parser) -->
-	   <script async src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/16.3.5/Tween.min.js"></script>
-	   <script async src="https://cdn.8thwall.com/web/xrextras/xrextras.js"></script>
 
 	   <!-- 8th Wall Self-Hosted Engine - World Effects (SLAM) -->
 	   <script async src="./xr.js" data-preload-chunks="slam"></script>
-
+	
 	   <!-- Client code -->
-	   <script src="index.js?v=27"></script>
+	   <script src="index.js?v=24"></script>
 	 </head>
 	
 	 <body>
