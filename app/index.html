@@ -42,7 +42,7 @@
 	   <script async src="./xr.js" data-preload-chunks="slam"></script>
 	
 	   <!-- Client code -->
-	   <script src="index.js?v=23"></script>
+	   <script src="index.js?v=24"></script>
 	 </head>
 	
 	 <body>
@@ -73,8 +73,17 @@
 	     <!-- AR Overlay - shown after AR starts -->
 	     <div id="overlay" style="display: none;"></div>
 
-	     <canvas id="camerafeed"></canvas>
+     <canvas id="camerafeed"></canvas>
 	   </div>
+
+    <!-- Mode toggle buttons -->
+    <div id="mode-toggle" style="display: none;">
+      <button class="mode-btn active" data-mode="wall">Wall</button>
+      <button class="mode-btn" data-mode="floor">Floor</button>
+    </div>
+
+    <!-- Crosshair (wall-aim phase) -->
+    <div id="crosshair" style="display: none;"></div>
 
 	
     <!-- Tap gesture indicator - outside ar-view to avoid z-index conflicts with canvas/XRExtras -->

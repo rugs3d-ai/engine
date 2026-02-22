@@ -1,10 +1,9 @@
 // Rugs3D - 8th Wall WebAR Test App
 // Self-hosted 8th Wall engine for World Effects (SLAM tracking)
-// Branding hidden via CSS
+// Dual-mode placement: Wall (2-step) + Floor (1-step)
 
 /* globals XR8 XRExtras THREE TWEEN */
 
-// GLB model URL (Supabase)
 const RUG_MODEL_URL = 'https://dfcksvowcprcrpkpfptk.supabase.co/storage/v1/object/public/3d-models/models/2A0pQDoKVq/carpet_model_20260210_094217.glb'
 
 let arStarted = false
@@ -13,6 +12,12 @@ let tapEnabled = false
 const showPreview = () => {
   document.getElementById('preview-page').style.display = 'flex'
   document.getElementById('ar-view').style.display = 'none'
+  const mt = document.getElementById('mode-toggle')
+  if (mt) mt.style.display = 'none'
+  document.getElementById('crosshair').style.display = 'none'
+  hideTapIndicator()
+  const dtb = document.getElementById('dim-toggle-btn')
+  if (dtb) dtb.remove()
   if (arStarted) {
     try {
       XR8.stop()
@@ -75,7 +80,11 @@ const showOverlay = () => {
 }
 
 const showTapIndicator = () => {
-  document.getElementById('tap-indicator').style.display = 'flex'
+  const el = document.getElementById('tap-indicator')
+  if (el) {
+    el.classList.remove('hidden')
+    el.style.display = 'flex'
+  }
 }
 
 const hideTapIndicator = () => {
@@ -85,6 +94,19 @@ const hideTapIndicator = () => {
     setTimeout(() => {
       tapIndicator.style.display = 'none'
     }, 300)
+  }
+}
+
+const setTapText = (text) => {
+  const el = document.querySelector('.tap-text')
+  if (el) el.textContent = text
+}
+
+const resetTapIndicatorPosition = () => {
+  const el = document.getElementById('tap-indicator')
+  if (el) {
+    el.style.left = '50%'
+    el.style.top = '50%'
   }
 }
 
@@ -250,13 +272,46 @@ const createDimToggle = (onToggle) => {
   return btn
 }
 
+const makeGridPlane = (type, width, height) => {
+  const isFloor = type === 'floor'
+  const canvas = document.createElement('canvas')
+  canvas.width = 256
+  canvas.height = 256
+  const ctx = canvas.getContext('2d')
+
+  ctx.fillStyle = isFloor ? 'rgba(0, 180, 255, 0.3)' : 'rgba(121, 22, 255, 0.3)'
+  ctx.fillRect(0, 0, 256, 256)
+
+  ctx.strokeStyle = isFloor ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.6)'
+  ctx.lineWidth = 1.5
+  for (let i = 0; i <= 256; i += 32) {
+    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 256); ctx.stroke()
+    ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(256, i); ctx.stroke()
+  }
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)'
+  ctx.lineWidth = 4
+  ctx.beginPath(); ctx.moveTo(0, 256); ctx.lineTo(256, 256); ctx.stroke()
+
+  ctx.strokeStyle = isFloor ? 'rgba(0,180,255,0.8)' : 'rgba(121,22,255,0.8)'
+  ctx.lineWidth = 3
+  ctx.strokeRect(0, 0, 256, 256)
+
+  const texture = new THREE.CanvasTexture(canvas)
+  const mat = new THREE.MeshBasicMaterial({
+    map: texture, transparent: true, opacity: 1.0,
+    side: THREE.DoubleSide, depthWrite: false
+  })
+  const geo = new THREE.PlaneGeometry(width, height)
+  return new THREE.Mesh(geo, mat)
+}
+
 const rugARScenePipelineModule = () => {
-  const startScale = new THREE.Vector3(0.01, 0.01, 0.01)
-  const endScale = new THREE.Vector3(1, 1, 1)
   const animationMillis = 500
 
   THREE.ColorManagement.enabled = false
 
+  let sceneRef = null
   let placedArt = null
   let artModelTemplate = null
   let modelLoaded = false
@@ -284,6 +339,16 @@ const rugARScenePipelineModule = () => {
   const scaleLerpFactor = 0.3
   let lastHitTestTime = 0
   const hitTestInterval = 33
+
+  let mode = 'wall'
+  let phase = 'scanning'
+
+  const raycaster = new THREE.Raycaster()
+  let groundMesh = null
+  let virtualWall = null
+  let wallMarker = null
+  let floorMarker = null
+  let floorMarkerPlane = null
 
   const preloadModel = () => {
     return new Promise((resolve, reject) => {
@@ -316,26 +381,6 @@ const rugARScenePipelineModule = () => {
     })
   }
 
-  const initXrScene = ({scene, camera, renderer}) => {
-    renderer.shadowMap.enabled = true
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap
-
-    const light = new THREE.DirectionalLight(0xffffff, 0.8)
-    light.position.set(0, 10, 0)
-    light.castShadow = false
-    scene.add(light)
-
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1)
-    hemiLight.position.set(0, 10, 0)
-    scene.add(hemiLight)
-
-    scene.add(new THREE.AmbientLight(0xffffff, 0.8))
-
-    camera.position.set(0, 1.6, 0)
-
-    preloadModel()
-  }
-
   const createArtFromModel = () => {
     if (!artModelTemplate) {
       console.warn('Model not loaded yet')
@@ -355,60 +400,111 @@ const rugARScenePipelineModule = () => {
     return art
   }
 
-  const animateIn = (art, position, rotation) => {
-    const scale = {...startScale}
-    art.position.set(position.x, position.y, position.z)
-    if (rotation) {
-      art.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w)
+  const cleanupDimensions = () => {
+    if (dimElements) {
+      dimElements.sprites.forEach(s => { if (s.parent) s.parent.remove(s) })
+      dimElements.strips.forEach(s => { if (s.parent) s.parent.remove(s) })
+      dimElements = null
     }
-    art.scale.set(scale.x, scale.y, scale.z)
-    XR8.Threejs.xrScene().scene.add(art)
-
-    new TWEEN.Tween(scale)
-      .to(endScale, animationMillis)
-      .easing(TWEEN.Easing.Elastic.Out)
-      .onUpdate(() => {
-        art.scale.set(scale.x, scale.y, scale.z)
-      })
-      .onComplete(() => {
-        initialScale = {x: art.scale.x, y: art.scale.y, z: art.scale.z}
-        scaleFactor = 1
-        targetScaleFactor = 1
-        const localBbox = new THREE.Box3().setFromObject(artModelTemplate)
-        requestAnimationFrame(() => {
-          dimElements = createDimensionArrows(art, localBbox)
-          createDimToggle(() => {
-            dimVisible = !dimVisible
-            const allMeshes = [...dimElements.sprites, ...dimElements.strips]
-            allMeshes.forEach(m => { m.visible = dimVisible })
-            const tbtn = document.getElementById('dim-toggle-btn')
-            if (tbtn) tbtn.textContent = dimVisible ? 'Hide Markers' : 'Show Markers'
-          })
-        })
-        showToast('Pinch to scale \u2022 Drag to move', 4000)
-      })
-      .start()
+    dimVisible = true
+    const dtb = document.getElementById('dim-toggle-btn')
+    if (dtb) dtb.remove()
   }
 
-  const placeArt = (position, rotation) => {
+  const setupDimensions = () => {
+    if (!placedArt || !artModelTemplate) return
+    const localBbox = new THREE.Box3().setFromObject(artModelTemplate)
+    requestAnimationFrame(() => {
+      dimElements = createDimensionArrows(placedArt, localBbox)
+      createDimToggle(() => {
+        dimVisible = !dimVisible
+        const allMeshes = [...dimElements.sprites, ...dimElements.strips]
+        allMeshes.forEach(m => { m.visible = dimVisible })
+        const tbtn = document.getElementById('dim-toggle-btn')
+        if (tbtn) tbtn.textContent = dimVisible ? 'Hide Markers' : 'Show Markers'
+      })
+    })
+  }
+
+  const startMode = (newMode) => {
+    mode = newMode
+    phase = 'scanning'
+
+    cleanupDimensions()
+
     if (placedArt) {
-      placedArt.position.set(position.x, position.y, position.z)
-      if (rotation) {
-        placedArt.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w)
-      }
-      return
+      sceneRef.remove(placedArt)
+      placedArt = null
     }
-    const art = createArtFromModel()
-    if (art) {
-      placedArt = art
-      scaleFactor = 1
-      targetScaleFactor = 1
-      animateIn(placedArt, position, rotation)
-      hideTapIndicator()
+
+    if (virtualWall) {
+      sceneRef.remove(virtualWall)
+      virtualWall = null
+    }
+
+    scaleFactor = 1
+    targetScaleFactor = 1
+
+    wallMarker.visible = (mode === 'wall')
+    floorMarker.visible = (mode === 'floor')
+
+    document.getElementById('crosshair').style.display = 'none'
+
+    if (mode === 'wall') {
+      setTapText('Align corner with wall base & tap')
     } else {
-      console.warn('Could not place art - model not loaded')
-      showToast('Loading model... please wait', 2000)
+      setTapText('Tap on floor to place')
     }
+    showTapIndicator()
+    resetTapIndicatorPosition()
+  }
+
+  const initXrScene = ({scene, camera, renderer}) => {
+    sceneRef = scene
+    renderer.shadowMap.enabled = true
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap
+
+    const light = new THREE.DirectionalLight(0xffffff, 0.8)
+    light.position.set(0, 10, 0)
+    light.castShadow = false
+    scene.add(light)
+
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1)
+    hemiLight.position.set(0, 10, 0)
+    scene.add(hemiLight)
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.8))
+
+    camera.position.set(0, 1.6, 0)
+
+    const groundGeo = new THREE.BoxGeometry(1000, 2, 1000)
+    const groundMat = new THREE.MeshBasicMaterial({visible: false})
+    groundMesh = new THREE.Mesh(groundGeo, groundMat)
+    groundMesh.position.set(0, -1, 0)
+    scene.add(groundMesh)
+
+    const wallMarkerFloor = makeGridPlane('floor', 0.6, 0.4)
+    wallMarkerFloor.rotation.x = -Math.PI / 2
+    wallMarkerFloor.position.set(0, 0.003, 0.2)
+
+    const wallMarkerWall = makeGridPlane('wall', 0.6, 0.4)
+    wallMarkerWall.position.set(0, 0.2, -0.003)
+
+    wallMarker = new THREE.Group()
+    wallMarker.add(wallMarkerFloor)
+    wallMarker.add(wallMarkerWall)
+    wallMarker.visible = false
+    scene.add(wallMarker)
+
+    floorMarkerPlane = makeGridPlane('floor', 0.8, 0.8)
+    floorMarkerPlane.rotation.x = -Math.PI / 2
+
+    floorMarker = new THREE.Group()
+    floorMarker.add(floorMarkerPlane)
+    floorMarker.visible = false
+    scene.add(floorMarker)
+
+    preloadModel()
   }
 
   const getPinchDistance = (touches) => {
@@ -428,7 +524,7 @@ const rugARScenePipelineModule = () => {
     if (!tapEnabled) return
     e.preventDefault()
 
-    if (e.touches.length === 2 && placedArt) {
+    if (e.touches.length === 2 && phase === 'placed' && placedArt) {
       isPinching = true
       isDragging = false
       startPinchDistance = getPinchDistance(e.touches)
@@ -448,7 +544,7 @@ const rugARScenePipelineModule = () => {
     if (!tapEnabled) return
     e.preventDefault()
 
-    if (isPinching && e.touches.length === 2 && placedArt) {
+    if (isPinching && e.touches.length === 2 && phase === 'placed' && placedArt) {
       const newDistance = getPinchDistance(e.touches)
       const spreadChange = newDistance - lastPinchDistance
       if (Math.abs(spreadChange) > 1) {
@@ -466,7 +562,7 @@ const rugARScenePipelineModule = () => {
       return
     }
 
-    if (e.touches.length === 1 && placedArt && touchStartPos) {
+    if (e.touches.length === 1 && phase === 'placed' && placedArt && touchStartPos) {
       const dx = e.touches[0].clientX - touchStartPos.x
       const dy = e.touches[0].clientY - touchStartPos.y
       const dist = Math.sqrt(dx * dx + dy * dy)
@@ -476,13 +572,22 @@ const rugARScenePipelineModule = () => {
         const now = Date.now()
         if (now - lastHitTestTime < hitTestInterval) return
         lastHitTestTime = now
+
         const touch = e.touches[0]
-        const x = touch.clientX / window.innerWidth
-        const y = touch.clientY / window.innerHeight
-        const hitTestResults = XR8.XrController.hitTest(x, y, ['FEATURE_POINT'])
-        if (hitTestResults.length > 0) {
-          const hit = hitTestResults[0]
-          dragTarget.set(hit.position.x, hit.position.y, hit.position.z)
+        const x = (touch.clientX / window.innerWidth) * 2 - 1
+        const y = -(touch.clientY / window.innerHeight) * 2 + 1
+        const camera = XR8.Threejs.xrScene().camera
+        raycaster.setFromCamera(new THREE.Vector2(x, y), camera)
+
+        if (mode === 'wall' && virtualWall) {
+          const hits = raycaster.intersectObject(virtualWall)
+          if (hits.length > 0) dragTarget.copy(hits[0].point)
+        } else if (mode === 'floor') {
+          const hits = raycaster.intersectObject(groundMesh)
+          if (hits.length > 0) {
+            const pt = hits[0].point
+            dragTarget.set(pt.x, 0, pt.z)
+          }
         }
       }
     }
@@ -492,18 +597,89 @@ const rugARScenePipelineModule = () => {
     if (e.touches.length < 2) {
       isPinching = false
     }
+
     if (e.touches.length === 0 && touchStartPos) {
       if (!isDragging && (Date.now() - touchStartTime) < 300) {
-        const x = touchStartPos.x / window.innerWidth
-        const y = touchStartPos.y / window.innerHeight
-        const hitTestResults = XR8.XrController.hitTest(x, y, ['FEATURE_POINT'])
-        if (hitTestResults.length > 0) {
-          const hit = hitTestResults[0]
-          placeArt(hit.position, hit.rotation)
-        } else if (!placedArt) {
-          showToast('No surface detected \u2014 try a textured area', 2000)
+
+        if (phase === 'scanning' && mode === 'wall') {
+          if (!modelLoaded) {
+            showToast('Loading model... please wait', 2000)
+          } else {
+            const wallGeo = new THREE.BoxGeometry(100, 100, 0.25)
+            const wallMat = new THREE.MeshBasicMaterial({visible: false})
+            virtualWall = new THREE.Mesh(wallGeo, wallMat)
+            virtualWall.rotation.y = wallMarker.rotation.y
+            const mPos = wallMarker.position
+            virtualWall.position.set(mPos.x, mPos.y + 50, mPos.z)
+            sceneRef.add(virtualWall)
+
+            placedArt = createArtFromModel()
+            if (placedArt) {
+              sceneRef.add(placedArt)
+              placedArt.position.copy(wallMarker.position)
+              placedArt.rotation.y = wallMarker.rotation.y
+              placedArt.visible = true
+
+              wallMarker.visible = false
+              phase = 'wall-aim'
+              document.getElementById('crosshair').style.display = 'block'
+              setTapText('Tap to place')
+            }
+          }
+        }
+
+        else if (phase === 'wall-aim') {
+          phase = 'placed'
+          document.getElementById('crosshair').style.display = 'none'
+          hideTapIndicator()
+
+          initialScale = {x: placedArt.scale.x, y: placedArt.scale.y, z: placedArt.scale.z}
+          scaleFactor = 1
+          targetScaleFactor = 1
+
+          setupDimensions()
+          showToast('Pinch to scale \u2022 Drag to move', 4000)
+        }
+
+        else if (phase === 'scanning' && mode === 'floor') {
+          if (!modelLoaded) {
+            showToast('Loading model... please wait', 2000)
+          } else {
+            placedArt = createArtFromModel()
+            if (placedArt) {
+              const camera = XR8.Threejs.xrScene().camera
+              const mPos = floorMarker.position
+              placedArt.position.set(mPos.x, 0, mPos.z)
+              placedArt.rotation.y = camera.rotation.y
+              placedArt.visible = true
+              placedArt.scale.set(0.01, 0.01, 0.01)
+              sceneRef.add(placedArt)
+
+              floorMarker.visible = false
+              hideTapIndicator()
+
+              const scale = {x: 0.01, y: 0.01, z: 0.01}
+              new TWEEN.Tween(scale)
+                .to({x: 1, y: 1, z: 1}, animationMillis)
+                .easing(TWEEN.Easing.Elastic.Out)
+                .onUpdate(() => {
+                  placedArt.scale.set(scale.x, scale.y, scale.z)
+                })
+                .onComplete(() => {
+                  initialScale = {x: 1, y: 1, z: 1}
+                  scaleFactor = 1
+                  targetScaleFactor = 1
+                  phase = 'placed'
+
+                  setupDimensions()
+                  showToast('Pinch to scale \u2022 Drag to move', 4000)
+                })
+                .start()
+            }
+          }
         }
       }
+
       touchStartPos = null
       isDragging = false
     }
@@ -524,13 +700,41 @@ const rugARScenePipelineModule = () => {
         requestAnimationFrame(animate)
         TWEEN.update(time)
 
-        if (placedArt) {
+        const cam = XR8.Threejs.xrScene().camera
+
+        if (phase === 'scanning' && tapEnabled) {
+          raycaster.setFromCamera(new THREE.Vector2(0, -0.5), cam)
+          const hits = raycaster.intersectObject(groundMesh)
+          if (hits.length > 0) {
+            if (mode === 'wall') {
+              wallMarker.position.lerp(hits[0].point, 0.4)
+              wallMarker.rotation.y = cam.rotation.y
+            } else {
+              const pt = hits[0].point
+              floorMarker.position.lerp(new THREE.Vector3(pt.x, 0.003, pt.z), 0.4)
+              floorMarker.rotation.y = cam.rotation.y
+              const t = Date.now() * 0.003
+              const pulse = 0.9 + 0.2 * Math.sin(t)
+              floorMarkerPlane.scale.set(pulse, pulse, pulse)
+            }
+          }
+        }
+
+        if (phase === 'wall-aim' && virtualWall && placedArt) {
+          raycaster.setFromCamera(new THREE.Vector2(0, 0), cam)
+          const hits = raycaster.intersectObject(virtualWall)
+          if (hits.length > 0) {
+            placedArt.position.lerp(hits[0].point, 0.4)
+            placedArt.rotation.y = virtualWall.rotation.y
+          }
+        }
+
+        if (phase === 'placed' && placedArt) {
           if (isDragging) {
             placedArt.position.lerp(dragTarget, dragLerpFactor)
           }
 
           if (dimElements && dimVisible) {
-            const cam = XR8.Threejs.xrScene().camera
             const tempVec = new THREE.Vector3()
             placedArt.getWorldPosition(tempVec)
             const dist = cam.position.distanceTo(tempVec)
@@ -571,10 +775,24 @@ const rugARScenePipelineModule = () => {
       })
 
       showOverlay()
+
+      const modeToggle = document.getElementById('mode-toggle')
+      const modeBtns = modeToggle.querySelectorAll('.mode-btn')
+      modeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const newMode = btn.dataset.mode
+          if (newMode === mode && phase === 'scanning') return
+          modeBtns.forEach(b => b.classList.remove('active'))
+          btn.classList.add('active')
+          startMode(newMode)
+        })
+      })
+
       const enableWhenReady = () => {
         if (modelLoaded) {
           tapEnabled = true
-          showTapIndicator()
+          modeToggle.style.display = 'flex'
+          startMode('wall')
           console.log('Tap-to-place enabled')
         } else {
           showToast('Loading model...', 1500)
