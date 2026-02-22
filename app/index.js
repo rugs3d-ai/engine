@@ -603,8 +603,17 @@ const onxrloaded = () => {
   XR8.run({canvas: document.getElementById('camerafeed')})
 }
 
-const startAR = () => {
+const loadThreeJS = async () => {
+  if (window.THREE && window.THREE.GLTFLoader) return
+  const THREE = await import('three')
+  const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js')
+  window.THREE = { ...THREE }
+  window.THREE.GLTFLoader = GLTFLoader
+}
+
+const startAR = async () => {
   showARView()
+  await loadThreeJS()
   XRExtras.Loading.showLoading({onxrloaded})
 }
 
