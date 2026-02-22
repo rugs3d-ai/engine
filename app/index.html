@@ -24,7 +24,7 @@
 	   <!-- Google Model Viewer for 3D preview -->
 	   <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
 
-	   <!-- Three.js import map (no fetch, just mapping for dynamic imports later) -->
+	   <!-- Three.js import map + eager load (XR8.Threejs needs THREE global at init) -->
 	   <script type="importmap">
 	     {
 	       "imports": {
@@ -32,6 +32,13 @@
 	         "three/addons/": "https://unpkg.com/three@0.172.0/examples/jsm/"
 	       }
 	     }
+	   </script>
+
+	   <script type="module">
+	     import * as THREE from 'three';
+	     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+	     window.THREE = { ...THREE };
+	     window.THREE.GLTFLoader = GLTFLoader;
 	   </script>
 
 	   <!-- Self-hosted: eliminates CDN DNS+TLS overhead, async to not block parser -->
@@ -42,7 +49,7 @@
 	   <script async src="./xr.js" data-preload-chunks="slam"></script>
 
 	   <!-- Client code -->
-	   <script src="index.js?v=25"></script>
+	   <script src="index.js?v=26"></script>
 	 </head>
 	
 	 <body>
