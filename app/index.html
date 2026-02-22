@@ -23,8 +23,14 @@
 	     }
 	   </script>
 	
-	   <!-- Three.js loaded dynamically in startAR() to unblock DOMContentLoaded -->
-
+	   <script type="module">
+	     import * as THREE from 'three';
+	     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+	
+	     window.THREE = { ...THREE };
+	     window.THREE.GLTFLoader = GLTFLoader;
+	   </script>
+	
 	   <!-- Javascript tweening engine -->
 	   <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/16.3.5/Tween.min.js"></script>
 	
@@ -36,7 +42,7 @@
 	   <script async src="./xr.js" data-preload-chunks="slam"></script>
 	
 	   <!-- Client code -->
-	   <script src="index.js?v=28"></script>
+	   <script src="index.js?v=23"></script>
 	 </head>
 	
 	 <body>
