@@ -925,7 +925,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const arMode = previewPage.dataset.arMode || 'auto'
   const route = resolveARRoute(arMode)
   const arBtn = document.getElementById('view-ar-btn')
-  const modelUrl = document.getElementById('model-viewer').getAttribute('src')
+  const mv = document.getElementById('model-viewer')
+  const modelUrl = mv.getAttribute('src')
 
   if (route === 'qrcode') {
     arBtn.style.display = 'none'
@@ -934,11 +935,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (route === 'quicklook' || route === 'sceneviewer') {
-    const mv = document.getElementById('model-viewer')
-    if (mv) {
-      const device = getDevice()
-      mv.setAttribute('ar-modes', device === 'android' ? 'scene-viewer webxr' : 'quick-look')
-    }
+    const device = getDevice()
+    mv.setAttribute('ar-modes', device === 'android' ? 'webxr scene-viewer' : 'quick-look')
+    mv.setAttribute('ar-scale', 'auto')
+    mv.setAttribute('ar-placement', previewPage.dataset.placement || 'floor')
     arBtn.disabled = false
     arBtn.addEventListener('click', triggerNativeAR)
     return
