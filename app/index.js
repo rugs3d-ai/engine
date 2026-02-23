@@ -937,7 +937,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const mv = document.getElementById('model-viewer')
     if (mv) {
       const device = getDevice()
-      mv.setAttribute('ar-modes', device === 'android' ? 'webxr scene-viewer' : 'quick-look')
+      mv.setAttribute('ar-modes', device === 'android' ? 'scene-viewer webxr' : 'quick-look')
     }
     arBtn.disabled = false
     arBtn.addEventListener('click', triggerNativeAR)
