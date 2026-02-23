@@ -42,12 +42,12 @@
 	   <script async src="./xr.js" data-preload-chunks="slam"></script>
 	
 	   <!-- Client code -->
-	   <script src="index.js?v=23"></script>
+	   <script src="index.js?v=29"></script>
 	 </head>
 	
 	 <body>
 	   <!-- Preview Page - shown by default -->
-	   <div id="preview-page">
+	   <div id="preview-page" data-placement="wall">
 	     <model-viewer
 	       id="model-viewer"
 	       src="https://dfcksvowcprcrpkpfptk.supabase.co/storage/v1/object/public/3d-models/models/2A0pQDoKVq/carpet_model_20260210_094217.glb"
@@ -81,8 +81,11 @@
  	   <div id="tap-indicator" style="display: none;">
  	     <div class="tap-circle tap-circle-outer"></div>
  	     <div class="tap-circle tap-circle-inner"></div>
- 	     <span class="tap-text">Tap on wall to place</span>
+ 	     <span class="tap-text">Align with wall base & Tap</span>
  	   </div>
+
+     <!-- Crosshair (wall-aim phase) -->
+     <div id="crosshair" style="display: none;"></div>
 
  	   <!-- AR toast messages -->
  	   <div id="ar-toast" style="display: none; opacity: 0;"></div>

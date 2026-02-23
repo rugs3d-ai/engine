@@ -88,6 +88,20 @@ const hideTapIndicator = () => {
   }
 }
 
+const setTapText = (text) => {
+  const el = document.querySelector('.tap-text')
+  if (el) el.textContent = text
+}
+
+const resetTapIndicatorPosition = () => {
+  const el = document.getElementById('tap-indicator')
+  if (el) {
+    el.style.top = '50%'
+    el.style.left = '50%'
+    el.style.transform = 'translate(-50%, -50%)'
+  }
+}
+
 const showToast = (msg, duration) => {
   const el = document.getElementById('ar-toast')
   if (!el) return
@@ -250,7 +264,49 @@ const createDimToggle = (onToggle) => {
   return btn
 }
 
+const makeGridPlane = (scene) => {
+  const group = new THREE.Group()
+  const gridSize = 1.5
+  const divisions = 12
+  const floorGeo = new THREE.PlaneGeometry(gridSize, gridSize)
+  const floorMat = new THREE.MeshBasicMaterial({color: 0x9933ff, transparent: true, opacity: 0.08, side: THREE.DoubleSide, depthWrite: false})
+  const floor = new THREE.Mesh(floorGeo, floorMat)
+  floor.rotation.x = -Math.PI / 2
+  floor.position.y = 0.001
+  group.add(floor)
+
+  const wallGeo = new THREE.PlaneGeometry(gridSize, gridSize)
+  const wallMat = new THREE.MeshBasicMaterial({color: 0x9933ff, transparent: true, opacity: 0.08, side: THREE.DoubleSide, depthWrite: false})
+  const wall = new THREE.Mesh(wallGeo, wallMat)
+  wall.position.y = gridSize / 2
+  wall.position.z = -gridSize / 2
+  group.add(wall)
+
+  const edgeMat = new THREE.LineBasicMaterial({color: 0xcc66ff, transparent: true, opacity: 0.5})
+  const step = gridSize / divisions
+  for (let i = 0; i <= divisions; i++) {
+    const t = -gridSize / 2 + i * step
+    const fPts = [new THREE.Vector3(t, 0.002, -gridSize / 2), new THREE.Vector3(t, 0.002, gridSize / 2)]
+    group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(fPts), edgeMat))
+    const fPts2 = [new THREE.Vector3(-gridSize / 2, 0.002, t), new THREE.Vector3(gridSize / 2, 0.002, t)]
+    group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(fPts2), edgeMat))
+    const wPts = [new THREE.Vector3(t, 0, -gridSize / 2), new THREE.Vector3(t, gridSize, -gridSize / 2)]
+    group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(wPts), edgeMat))
+    const wPts2 = [new THREE.Vector3(-gridSize / 2, i * step, -gridSize / 2), new THREE.Vector3(gridSize / 2, i * step, -gridSize / 2)]
+    group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(wPts2), edgeMat))
+  }
+
+  const hingeMat = new THREE.LineBasicMaterial({color: 0xff66ff, linewidth: 2})
+  const hingePts = [new THREE.Vector3(-gridSize / 2, 0.003, -gridSize / 2), new THREE.Vector3(gridSize / 2, 0.003, -gridSize / 2)]
+  group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(hingePts), hingeMat))
+
+  scene.add(group)
+  return group
+}
+
 const rugARScenePipelineModule = () => {
+  const placementMode = document.getElementById('preview-page').dataset.placement || 'wall'
+
   const startScale = new THREE.Vector3(0.01, 0.01, 0.01)
   const endScale = new THREE.Vector3(1, 1, 1)
   const animationMillis = 500
@@ -284,6 +340,12 @@ const rugARScenePipelineModule = () => {
   const scaleLerpFactor = 0.3
   let lastHitTestTime = 0
   const hitTestInterval = 33
+
+  let phase = 'scanning'
+  const raycaster = new THREE.Raycaster()
+  let groundMesh = null
+  let virtualWall = null
+  let wallMarker = null
 
   const preloadModel = () => {
     return new Promise((resolve, reject) => {
@@ -333,6 +395,15 @@ const rugARScenePipelineModule = () => {
 
     camera.position.set(0, 1.6, 0)
 
+    if (placementMode === 'wall') {
+      const gGeo = new THREE.PlaneGeometry(200, 200)
+      const gMat = new THREE.MeshBasicMaterial({visible: false, side: THREE.DoubleSide})
+      groundMesh = new THREE.Mesh(gGeo, gMat)
+      groundMesh.rotation.x = -Math.PI / 2
+      groundMesh.position.y = 0
+      scene.add(groundMesh)
+    }
+
     preloadModel()
   }
 
@@ -355,14 +426,9 @@ const rugARScenePipelineModule = () => {
     return art
   }
 
-  const animateIn = (art, position, rotation) => {
+  const animateIn = (art) => {
     const scale = {...startScale}
-    art.position.set(position.x, position.y, position.z)
-    if (rotation) {
-      art.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w)
-    }
     art.scale.set(scale.x, scale.y, scale.z)
-    XR8.Threejs.xrScene().scene.add(art)
 
     new TWEEN.Tween(scale)
       .to(endScale, animationMillis)
@@ -390,24 +456,97 @@ const rugARScenePipelineModule = () => {
       .start()
   }
 
-  const placeArt = (position, rotation) => {
-    if (placedArt) {
-      placedArt.position.set(position.x, position.y, position.z)
-      if (rotation) {
-        placedArt.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w)
+  const handleFloorTap = (x, y) => {
+    const hitTestResults = XR8.XrController.hitTest(x, y, ['FEATURE_POINT'])
+    if (hitTestResults.length > 0) {
+      const hit = hitTestResults[0]
+      if (!placedArt) {
+        const art = createArtFromModel()
+        if (art) {
+          placedArt = art
+          scaleFactor = 1
+          targetScaleFactor = 1
+          art.position.set(hit.position.x, hit.position.y, hit.position.z)
+          if (hit.rotation) {
+            art.quaternion.set(hit.rotation.x, hit.rotation.y, hit.rotation.z, hit.rotation.w)
+          }
+          XR8.Threejs.xrScene().scene.add(art)
+          animateIn(placedArt)
+          hideTapIndicator()
+        } else {
+          showToast('Loading model... please wait', 2000)
+        }
+      } else {
+        placedArt.position.set(hit.position.x, hit.position.y, hit.position.z)
+        if (hit.rotation) {
+          placedArt.quaternion.set(hit.rotation.x, hit.rotation.y, hit.rotation.z, hit.rotation.w)
+        }
       }
-      return
+    } else if (!placedArt) {
+      showToast('No surface detected \u2014 try a textured area', 2000)
     }
-    const art = createArtFromModel()
-    if (art) {
-      placedArt = art
-      scaleFactor = 1
-      targetScaleFactor = 1
-      animateIn(placedArt, position, rotation)
-      hideTapIndicator()
-    } else {
-      console.warn('Could not place art - model not loaded')
-      showToast('Loading model... please wait', 2000)
+  }
+
+  const handleWallTap = (x, y, camera) => {
+    if (phase === 'scanning') {
+      const ndc = new THREE.Vector2((x * 2) - 1, -(y * 2) + 1)
+      raycaster.setFromCamera(ndc, camera)
+      const hits = raycaster.intersectObject(groundMesh)
+      if (hits.length > 0) {
+        const pt = hits[0].point
+        if (wallMarker) {
+          wallMarker.visible = false
+          XR8.Threejs.xrScene().scene.remove(wallMarker)
+        }
+        wallMarker = makeGridPlane(XR8.Threejs.xrScene().scene)
+        wallMarker.position.set(pt.x, 0, pt.z)
+        wallMarker.lookAt(camera.position.x, 0, camera.position.z)
+        wallMarker.visible = true
+
+        const wallNormal = new THREE.Vector3(0, 0, 1).applyQuaternion(wallMarker.quaternion)
+        const wallPos = new THREE.Vector3(pt.x, 0, pt.z).add(wallNormal.clone().multiplyScalar(-0.75))
+        const wGeo = new THREE.PlaneGeometry(200, 200)
+        const wMat = new THREE.MeshBasicMaterial({visible: false, side: THREE.DoubleSide})
+        virtualWall = new THREE.Mesh(wGeo, wMat)
+        virtualWall.position.copy(wallPos)
+        virtualWall.lookAt(wallPos.clone().add(wallNormal))
+        XR8.Threejs.xrScene().scene.add(virtualWall)
+
+        phase = 'wall-aim'
+        setTapText('Tap to place art on wall')
+        document.getElementById('crosshair').style.display = 'block'
+        resetTapIndicatorPosition()
+        showToast('Aim at the wall & tap to place', 3000)
+      } else {
+        showToast('Point at the floor near the wall base', 2000)
+      }
+    } else if (phase === 'wall-aim') {
+      const ndc = new THREE.Vector2((x * 2) - 1, -(y * 2) + 1)
+      raycaster.setFromCamera(ndc, camera)
+      const hits = raycaster.intersectObject(virtualWall)
+      if (hits.length > 0) {
+        const pt = hits[0].point
+        if (!placedArt) {
+          const art = createArtFromModel()
+          if (art) {
+            placedArt = art
+            scaleFactor = 1
+            targetScaleFactor = 1
+            art.position.copy(pt)
+            art.quaternion.copy(virtualWall.quaternion)
+            XR8.Threejs.xrScene().scene.add(art)
+            animateIn(placedArt)
+            phase = 'placed'
+            hideTapIndicator()
+            document.getElementById('crosshair').style.display = 'none'
+            if (wallMarker) wallMarker.visible = false
+          } else {
+            showToast('Loading model... please wait', 2000)
+          }
+        }
+      } else {
+        showToast('Aim at the wall area', 2000)
+      }
     }
   }
 
@@ -466,7 +605,7 @@ const rugARScenePipelineModule = () => {
       return
     }
 
-    if (e.touches.length === 1 && placedArt && touchStartPos) {
+    if (e.touches.length === 1 && placedArt && touchStartPos && phase === 'placed') {
       const dx = e.touches[0].clientX - touchStartPos.x
       const dy = e.touches[0].clientY - touchStartPos.y
       const dist = Math.sqrt(dx * dx + dy * dy)
@@ -477,12 +616,25 @@ const rugARScenePipelineModule = () => {
         if (now - lastHitTestTime < hitTestInterval) return
         lastHitTestTime = now
         const touch = e.touches[0]
-        const x = touch.clientX / window.innerWidth
-        const y = touch.clientY / window.innerHeight
-        const hitTestResults = XR8.XrController.hitTest(x, y, ['FEATURE_POINT'])
-        if (hitTestResults.length > 0) {
-          const hit = hitTestResults[0]
-          dragTarget.set(hit.position.x, hit.position.y, hit.position.z)
+        if (placementMode === 'wall' && virtualWall) {
+          const ndc = new THREE.Vector2(
+            (touch.clientX / window.innerWidth) * 2 - 1,
+            -(touch.clientY / window.innerHeight) * 2 + 1
+          )
+          const cam = XR8.Threejs.xrScene().camera
+          raycaster.setFromCamera(ndc, cam)
+          const hits = raycaster.intersectObject(virtualWall)
+          if (hits.length > 0) {
+            dragTarget.copy(hits[0].point)
+          }
+        } else {
+          const x = touch.clientX / window.innerWidth
+          const y = touch.clientY / window.innerHeight
+          const hitTestResults = XR8.XrController.hitTest(x, y, ['FEATURE_POINT'])
+          if (hitTestResults.length > 0) {
+            const hit = hitTestResults[0]
+            dragTarget.set(hit.position.x, hit.position.y, hit.position.z)
+          }
         }
       }
     }
@@ -496,12 +648,11 @@ const rugARScenePipelineModule = () => {
       if (!isDragging && (Date.now() - touchStartTime) < 300) {
         const x = touchStartPos.x / window.innerWidth
         const y = touchStartPos.y / window.innerHeight
-        const hitTestResults = XR8.XrController.hitTest(x, y, ['FEATURE_POINT'])
-        if (hitTestResults.length > 0) {
-          const hit = hitTestResults[0]
-          placeArt(hit.position, hit.rotation)
-        } else if (!placedArt) {
-          showToast('No surface detected \u2014 try a textured area', 2000)
+        const camera = XR8.Threejs.xrScene().camera
+        if (placementMode === 'wall') {
+          handleWallTap(x, y, camera)
+        } else {
+          handleFloorTap(x, y)
         }
       }
       touchStartPos = null
@@ -523,6 +674,27 @@ const rugARScenePipelineModule = () => {
       const animate = (time) => {
         requestAnimationFrame(animate)
         TWEEN.update(time)
+
+        if (placementMode === 'wall' && phase === 'scanning' && wallMarker === null && tapEnabled) {
+          const cam = XR8.Threejs.xrScene().camera
+          const ndc = new THREE.Vector2(0, 0)
+          raycaster.setFromCamera(ndc, cam)
+          if (groundMesh) {
+            const hits = raycaster.intersectObject(groundMesh)
+            if (hits.length > 0) {
+              const el = document.getElementById('tap-indicator')
+              if (el && el.style.display !== 'none') {
+                const pt = hits[0].point
+                const screenPos = pt.clone().project(cam)
+                const sx = (screenPos.x * 0.5 + 0.5) * window.innerWidth
+                const sy = (-screenPos.y * 0.5 + 0.5) * window.innerHeight
+                el.style.left = sx + 'px'
+                el.style.top = sy + 'px'
+                el.style.transform = 'translate(-50%, -50%)'
+              }
+            }
+          }
+        }
 
         if (placedArt) {
           if (isDragging) {
@@ -574,8 +746,11 @@ const rugARScenePipelineModule = () => {
       const enableWhenReady = () => {
         if (modelLoaded) {
           tapEnabled = true
+          if (placementMode === 'wall') {
+            setTapText('Align with wall base & Tap')
+          }
           showTapIndicator()
-          console.log('Tap-to-place enabled')
+          console.log('Tap-to-place enabled (mode: ' + placementMode + ')')
         } else {
           showToast('Loading model...', 1500)
           setTimeout(enableWhenReady, 500)
