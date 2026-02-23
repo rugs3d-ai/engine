@@ -266,24 +266,24 @@ const createDimToggle = (onToggle) => {
 
 const makeGridPlane = (scene) => {
   const group = new THREE.Group()
-  const gridSize = 0.3
+  const gridSize = 0.6
   const divisions = 6
   const floorGeo = new THREE.PlaneGeometry(gridSize, gridSize)
-  const floorMat = new THREE.MeshBasicMaterial({color: 0x00aaff, transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false})
+  const floorMat = new THREE.MeshBasicMaterial({color: 0x00aaff, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false})
   const floor = new THREE.Mesh(floorGeo, floorMat)
   floor.rotation.x = -Math.PI / 2
   floor.position.y = 0.001
   group.add(floor)
 
   const wallGeo = new THREE.PlaneGeometry(gridSize, gridSize)
-  const wallMat = new THREE.MeshBasicMaterial({color: 0xaa44ff, transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false})
+  const wallMat = new THREE.MeshBasicMaterial({color: 0xaa44ff, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false})
   const wall = new THREE.Mesh(wallGeo, wallMat)
   wall.position.y = gridSize / 2
   wall.position.z = -gridSize / 2
   group.add(wall)
 
-  const floorEdgeMat = new THREE.LineBasicMaterial({color: 0x0088dd, transparent: true, opacity: 0.7})
-  const wallEdgeMat = new THREE.LineBasicMaterial({color: 0x8833cc, transparent: true, opacity: 0.7})
+  const floorEdgeMat = new THREE.LineBasicMaterial({color: 0x0099ff})
+  const wallEdgeMat = new THREE.LineBasicMaterial({color: 0x9944dd})
   const step = gridSize / divisions
   for (let i = 0; i <= divisions; i++) {
     const t = -gridSize / 2 + i * step
@@ -495,7 +495,7 @@ const rugARScenePipelineModule = () => {
         return
       }
       const wallNormal = new THREE.Vector3(0, 0, 1).applyQuaternion(wallMarker.quaternion)
-      const wallPos = wallMarker.position.clone().add(wallNormal.clone().multiplyScalar(-0.75))
+      const wallPos = wallMarker.position.clone().add(wallNormal.clone().multiplyScalar(-0.3))
       const wGeo = new THREE.PlaneGeometry(200, 200)
       const wMat = new THREE.MeshBasicMaterial({visible: false, side: THREE.DoubleSide})
       virtualWall = new THREE.Mesh(wGeo, wMat)
@@ -503,37 +503,43 @@ const rugARScenePipelineModule = () => {
       virtualWall.lookAt(wallPos.clone().add(wallNormal))
       XR8.Threejs.xrScene().scene.add(virtualWall)
 
+      wallMarker.visible = false
+
+      const art = createArtFromModel()
+      if (art) {
+        placedArt = art
+        scaleFactor = 1
+        targetScaleFactor = 1
+        art.quaternion.copy(virtualWall.quaternion)
+        XR8.Threejs.xrScene().scene.add(art)
+        art.scale.set(1, 1, 1)
+      }
+
       phase = 'wall-aim'
       setTapText('Tap to place art on wall')
       document.getElementById('crosshair').style.display = 'block'
       resetTapIndicatorPosition()
       showToast('Aim at the wall & tap to place', 3000)
     } else if (phase === 'wall-aim') {
-      const ndc = new THREE.Vector2((x * 2) - 1, -(y * 2) + 1)
-      raycaster.setFromCamera(ndc, camera)
-      const hits = raycaster.intersectObject(virtualWall)
-      if (hits.length > 0) {
-        const pt = hits[0].point
-        if (!placedArt) {
-          const art = createArtFromModel()
-          if (art) {
-            placedArt = art
-            scaleFactor = 1
-            targetScaleFactor = 1
-            art.position.copy(pt)
-            art.quaternion.copy(virtualWall.quaternion)
-            XR8.Threejs.xrScene().scene.add(art)
-            animateIn(placedArt)
-            phase = 'placed'
-            hideTapIndicator()
-            document.getElementById('crosshair').style.display = 'none'
-            if (wallMarker) wallMarker.visible = false
-          } else {
-            showToast('Loading model... please wait', 2000)
-          }
-        }
-      } else {
-        showToast('Aim at the wall area', 2000)
+      if (placedArt) {
+        phase = 'placed'
+        initialScale = {x: placedArt.scale.x, y: placedArt.scale.y, z: placedArt.scale.z}
+        scaleFactor = 1
+        targetScaleFactor = 1
+        const localBbox = new THREE.Box3().setFromObject(artModelTemplate)
+        requestAnimationFrame(() => {
+          dimElements = createDimensionArrows(placedArt, localBbox)
+          createDimToggle(() => {
+            dimVisible = !dimVisible
+            const allMeshes = [...dimElements.sprites, ...dimElements.strips]
+            allMeshes.forEach(m => { m.visible = dimVisible })
+            const tbtn = document.getElementById('dim-toggle-btn')
+            if (tbtn) tbtn.textContent = dimVisible ? 'Hide Markers' : 'Show Markers'
+          })
+        })
+        hideTapIndicator()
+        document.getElementById('crosshair').style.display = 'none'
+        showToast('Pinch to scale \u2022 Drag to move', 4000)
       }
     }
   }
@@ -674,7 +680,7 @@ const rugARScenePipelineModule = () => {
               wallMarker.position.set(pt.x, 0, pt.z)
               wallMarker.lookAt(cam.position.x, 0, cam.position.z)
               wallMarker.visible = true
-              const gs = 0.3
+              const gs = 0.6
               const wallCenter = new THREE.Vector3(0, gs / 2, -gs / 2)
               wallCenter.applyMatrix4(wallMarker.matrixWorld)
               const screenPos = wallCenter.clone().project(cam)
@@ -688,6 +694,25 @@ const rugARScenePipelineModule = () => {
               }
             } else {
               wallMarker.visible = false
+            }
+          }
+        }
+
+        if (placementMode === 'wall' && phase === 'wall-aim' && placedArt && virtualWall) {
+          const cam = XR8.Threejs.xrScene().camera
+          const ndc = new THREE.Vector2(0, 0)
+          raycaster.setFromCamera(ndc, cam)
+          const hits = raycaster.intersectObject(virtualWall)
+          if (hits.length > 0) {
+            placedArt.position.copy(hits[0].point)
+            const screenPos = hits[0].point.clone().project(cam)
+            const sx = (screenPos.x * 0.5 + 0.5) * window.innerWidth
+            const sy = (-screenPos.y * 0.5 + 0.5) * window.innerHeight
+            const el = document.getElementById('tap-indicator')
+            if (el && el.style.display !== 'none') {
+              el.style.left = sx + 'px'
+              el.style.top = sy + 'px'
+              el.style.transform = 'translate(-50%, -50%)'
             }
           }
         }
