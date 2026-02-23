@@ -595,7 +595,12 @@ const rugARScenePipelineModule = () => {
       const newAngle = getRotationAngle(e.touches)
       const angleDelta = newAngle - lastRotationAngle
       if (Math.abs(angleDelta) > 0.005) {
-        placedArt.rotateY(angleDelta)
+        if (placementMode === 'wall' && virtualWall) {
+          const wallNormal = new THREE.Vector3(0, 0, 1).applyQuaternion(virtualWall.quaternion)
+          placedArt.rotateOnWorldAxis(wallNormal, angleDelta)
+        } else {
+          placedArt.rotateY(angleDelta)
+        }
       }
       lastRotationAngle = newAngle
       return
