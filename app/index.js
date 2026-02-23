@@ -489,37 +489,24 @@ const rugARScenePipelineModule = () => {
 
   const handleWallTap = (x, y, camera) => {
     if (phase === 'scanning') {
-      const ndc = new THREE.Vector2((x * 2) - 1, -(y * 2) + 1)
-      raycaster.setFromCamera(ndc, camera)
-      const hits = raycaster.intersectObject(groundMesh)
-      if (hits.length > 0) {
-        const pt = hits[0].point
-        if (wallMarker) {
-          wallMarker.visible = false
-          XR8.Threejs.xrScene().scene.remove(wallMarker)
-        }
-        wallMarker = makeGridPlane(XR8.Threejs.xrScene().scene)
-        wallMarker.position.set(pt.x, 0, pt.z)
-        wallMarker.lookAt(camera.position.x, 0, camera.position.z)
-        wallMarker.visible = true
-
-        const wallNormal = new THREE.Vector3(0, 0, 1).applyQuaternion(wallMarker.quaternion)
-        const wallPos = new THREE.Vector3(pt.x, 0, pt.z).add(wallNormal.clone().multiplyScalar(-0.75))
-        const wGeo = new THREE.PlaneGeometry(200, 200)
-        const wMat = new THREE.MeshBasicMaterial({visible: false, side: THREE.DoubleSide})
-        virtualWall = new THREE.Mesh(wGeo, wMat)
-        virtualWall.position.copy(wallPos)
-        virtualWall.lookAt(wallPos.clone().add(wallNormal))
-        XR8.Threejs.xrScene().scene.add(virtualWall)
-
-        phase = 'wall-aim'
-        setTapText('Tap to place art on wall')
-        document.getElementById('crosshair').style.display = 'block'
-        resetTapIndicatorPosition()
-        showToast('Aim at the wall & tap to place', 3000)
-      } else {
+      if (!wallMarker || !wallMarker.visible) {
         showToast('Point at the floor near the wall base', 2000)
+        return
       }
+      const wallNormal = new THREE.Vector3(0, 0, 1).applyQuaternion(wallMarker.quaternion)
+      const wallPos = wallMarker.position.clone().add(wallNormal.clone().multiplyScalar(-0.75))
+      const wGeo = new THREE.PlaneGeometry(200, 200)
+      const wMat = new THREE.MeshBasicMaterial({visible: false, side: THREE.DoubleSide})
+      virtualWall = new THREE.Mesh(wGeo, wMat)
+      virtualWall.position.copy(wallPos)
+      virtualWall.lookAt(wallPos.clone().add(wallNormal))
+      XR8.Threejs.xrScene().scene.add(virtualWall)
+
+      phase = 'wall-aim'
+      setTapText('Tap to place art on wall')
+      document.getElementById('crosshair').style.display = 'block'
+      resetTapIndicatorPosition()
+      showToast('Aim at the wall & tap to place', 3000)
     } else if (phase === 'wall-aim') {
       const ndc = new THREE.Vector2((x * 2) - 1, -(y * 2) + 1)
       raycaster.setFromCamera(ndc, camera)
@@ -675,23 +662,19 @@ const rugARScenePipelineModule = () => {
         requestAnimationFrame(animate)
         TWEEN.update(time)
 
-        if (placementMode === 'wall' && phase === 'scanning' && wallMarker === null && tapEnabled) {
+        if (placementMode === 'wall' && phase === 'scanning' && wallMarker && tapEnabled) {
           const cam = XR8.Threejs.xrScene().camera
           const ndc = new THREE.Vector2(0, 0)
           raycaster.setFromCamera(ndc, cam)
           if (groundMesh) {
             const hits = raycaster.intersectObject(groundMesh)
             if (hits.length > 0) {
-              const el = document.getElementById('tap-indicator')
-              if (el && el.style.display !== 'none') {
-                const pt = hits[0].point
-                const screenPos = pt.clone().project(cam)
-                const sx = (screenPos.x * 0.5 + 0.5) * window.innerWidth
-                const sy = (-screenPos.y * 0.5 + 0.5) * window.innerHeight
-                el.style.left = sx + 'px'
-                el.style.top = sy + 'px'
-                el.style.transform = 'translate(-50%, -50%)'
-              }
+              const pt = hits[0].point
+              wallMarker.position.set(pt.x, 0, pt.z)
+              wallMarker.lookAt(cam.position.x, 0, cam.position.z)
+              wallMarker.visible = true
+            } else {
+              wallMarker.visible = false
             }
           }
         }
@@ -748,6 +731,8 @@ const rugARScenePipelineModule = () => {
           tapEnabled = true
           if (placementMode === 'wall') {
             setTapText('Align with wall base & Tap')
+            wallMarker = makeGridPlane(XR8.Threejs.xrScene().scene)
+            wallMarker.visible = false
           }
           showTapIndicator()
           console.log('Tap-to-place enabled (mode: ' + placementMode + ')')
