@@ -31,21 +31,11 @@ const resolveARRoute = (arMode) => {
   return 'quicklook'
 }
 
-const triggerQuickLook = (modelUrl) => {
-  const a = document.createElement('a')
-  a.rel = 'ar'
-  a.href = modelUrl
-  const img = document.createElement('img')
-  a.appendChild(img)
-  document.body.appendChild(a)
-  a.click()
-  setTimeout(() => a.remove(), 100)
-}
-
-const triggerSceneViewer = (modelUrl) => {
-  const fallbackUrl = encodeURIComponent(window.location.href)
-  const intentUrl = 'intent://arvr.google.com/scene-viewer/1.0?file=' + encodeURIComponent(modelUrl) + '&mode=ar_preferred&link=' + fallbackUrl + '&title=3D%20Model#Intent;scheme=https;package=com.google.android.googlequicksearchbox;action=android.intent.action.VIEW;end;'
-  window.location.href = intentUrl
+const triggerNativeAR = () => {
+  const mv = document.getElementById('model-viewer')
+  if (mv && mv.activateAR) {
+    mv.activateAR()
+  }
 }
 
 const showQROverlay = () => {
@@ -943,15 +933,9 @@ document.addEventListener('DOMContentLoaded', () => {
     return
   }
 
-  if (route === 'quicklook') {
+  if (route === 'quicklook' || route === 'sceneviewer') {
     arBtn.disabled = false
-    arBtn.addEventListener('click', () => triggerQuickLook(modelUrl))
-    return
-  }
-
-  if (route === 'sceneviewer') {
-    arBtn.disabled = false
-    arBtn.addEventListener('click', () => triggerSceneViewer(modelUrl))
+    arBtn.addEventListener('click', triggerNativeAR)
     return
   }
 
