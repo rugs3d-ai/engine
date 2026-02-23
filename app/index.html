@@ -1,0 +1,107 @@
+
+<!doctype html>	
+	<html>
+	 <head>
+	   <meta charset="UTF-8">
+	   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+	   <meta name="apple-mobile-web-app-capable" content="yes">
+	   <meta name="mobile-web-app-capable" content="yes">
+	  
+	   <title>Rugs3D - AR Experience</title>
+	   <link rel="stylesheet" type="text/css" href="index.css">
+	
+	   <!-- Google Model Viewer for 3D preview -->
+	   <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+	
+	   <!-- Three.js 160+ requires the use of import maps -->
+	   <script type="importmap">
+	     {
+	       "imports": {
+	         "three": "https://unpkg.com/three@0.172.0/build/three.module.min.js",
+	         "three/addons/": "https://unpkg.com/three@0.172.0/examples/jsm/"
+	       }
+	     }
+	   </script>
+	
+	   <script type="module">
+	     import * as THREE from 'three';
+	     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+	
+	     window.THREE = { ...THREE };
+	     window.THREE.GLTFLoader = GLTFLoader;
+	   </script>
+	
+	   <!-- Javascript tweening engine -->
+	   <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/16.3.5/Tween.min.js"></script>
+	
+    <!-- XR Extras - needed for proper initialization (UI hidden via CSS) -->
+ 	   <script src="https://cdn.8thwall.com/web/xrextras/xrextras.js"></script>
+
+
+	   <!-- 8th Wall Self-Hosted Engine - World Effects (SLAM) -->
+	   <script async src="./xr.js" data-preload-chunks="slam"></script>
+	
+	   <!-- Client code -->
+	   <script src="index.js?v=45"></script>
+	 </head>
+	
+	 <body>
+	   <!-- Preview Page - shown by default -->
+	   <div id="preview-page" data-placement="floor" data-ar-mode="auto">
+      <model-viewer
+ 	       id="model-viewer"
+ 	       src="https://dfcksvowcprcrpkpfptk.supabase.co/storage/v1/object/public/3d-models/models/2A0pQDoKVq/carpet_model_20260210_094217.glb"
+ 	       alt="3D Art Preview"
+ 	       ar
+ 	       ar-modes="scene-viewer quick-look"
+ 	       camera-controls
+ 	       touch-action="pan-y"
+ 	       auto-rotate
+ 	       shadow-intensity="1"
+ 	       exposure="1"
+ 	     ></model-viewer>
+	     <button id="view-ar-btn" class="view-ar-button">
+	       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+	         <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+	         <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+	         <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+	       </svg>
+	       View in AR
+	     </button>
+	   </div>
+	
+	   <!-- AR View - hidden by default -->
+	   <div id="ar-view" style="display: none;">
+	     <!-- AR Overlay - shown after AR starts -->
+	     <div id="overlay" style="display: none;"></div>
+
+	     <canvas id="camerafeed"></canvas>
+	   </div>
+
+	
+    <!-- Tap gesture indicator - outside ar-view to avoid z-index conflicts with canvas/XRExtras -->
+ 	   <div id="tap-indicator" style="display: none;">
+ 	     <div class="tap-circle tap-circle-outer"></div>
+ 	     <div class="tap-circle tap-circle-inner"></div>
+ 	     <span class="tap-text">Align with wall base & Tap</span>
+ 	   </div>
+
+     <!-- Crosshair (wall-aim phase) -->
+     <div id="crosshair" style="display: none;"></div>
+
+ 	   <!-- AR toast messages -->
+ 	   <div id="ar-toast" style="display: none; opacity: 0;"></div>
+
+ 	   <!-- Scale percentage label -->
+ 	   <div id="scale-label" style="opacity: 0;"></div>
+
+     <!-- QR code overlay (desktop) -->
+     <div id="qr-overlay" style="display: none;">
+       <div class="qr-content">
+         <p>Scan with your phone to view in AR</p>
+         <img id="qr-img" alt="QR Code" />
+       </div>
+     </div>
+	 </body>
+	</html>
+

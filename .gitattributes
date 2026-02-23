@@ -1,1 +1,5 @@
 *.zip filter=lfs diff=lfs merge=lfs -text
+app/xr*.js filter=lfs diff=lfs merge=lfs -text
+app/resources/*.js filter=lfs diff=lfs merge=lfs -text
+app/resources/*.tflite filter=lfs diff=lfs merge=lfs -text
+app/resources/*.glb filter=lfs diff=lfs merge=lfs -text
