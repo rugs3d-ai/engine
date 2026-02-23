@@ -266,37 +266,38 @@ const createDimToggle = (onToggle) => {
 
 const makeGridPlane = (scene) => {
   const group = new THREE.Group()
-  const gridSize = 1.5
-  const divisions = 12
+  const gridSize = 0.3
+  const divisions = 6
   const floorGeo = new THREE.PlaneGeometry(gridSize, gridSize)
-  const floorMat = new THREE.MeshBasicMaterial({color: 0x9933ff, transparent: true, opacity: 0.08, side: THREE.DoubleSide, depthWrite: false})
+  const floorMat = new THREE.MeshBasicMaterial({color: 0x00aaff, transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false})
   const floor = new THREE.Mesh(floorGeo, floorMat)
   floor.rotation.x = -Math.PI / 2
   floor.position.y = 0.001
   group.add(floor)
 
   const wallGeo = new THREE.PlaneGeometry(gridSize, gridSize)
-  const wallMat = new THREE.MeshBasicMaterial({color: 0x9933ff, transparent: true, opacity: 0.08, side: THREE.DoubleSide, depthWrite: false})
+  const wallMat = new THREE.MeshBasicMaterial({color: 0xaa44ff, transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false})
   const wall = new THREE.Mesh(wallGeo, wallMat)
   wall.position.y = gridSize / 2
   wall.position.z = -gridSize / 2
   group.add(wall)
 
-  const edgeMat = new THREE.LineBasicMaterial({color: 0xcc66ff, transparent: true, opacity: 0.5})
+  const floorEdgeMat = new THREE.LineBasicMaterial({color: 0x0088dd, transparent: true, opacity: 0.7})
+  const wallEdgeMat = new THREE.LineBasicMaterial({color: 0x8833cc, transparent: true, opacity: 0.7})
   const step = gridSize / divisions
   for (let i = 0; i <= divisions; i++) {
     const t = -gridSize / 2 + i * step
     const fPts = [new THREE.Vector3(t, 0.002, -gridSize / 2), new THREE.Vector3(t, 0.002, gridSize / 2)]
-    group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(fPts), edgeMat))
+    group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(fPts), floorEdgeMat))
     const fPts2 = [new THREE.Vector3(-gridSize / 2, 0.002, t), new THREE.Vector3(gridSize / 2, 0.002, t)]
-    group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(fPts2), edgeMat))
+    group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(fPts2), floorEdgeMat))
     const wPts = [new THREE.Vector3(t, 0, -gridSize / 2), new THREE.Vector3(t, gridSize, -gridSize / 2)]
-    group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(wPts), edgeMat))
+    group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(wPts), wallEdgeMat))
     const wPts2 = [new THREE.Vector3(-gridSize / 2, i * step, -gridSize / 2), new THREE.Vector3(gridSize / 2, i * step, -gridSize / 2)]
-    group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(wPts2), edgeMat))
+    group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(wPts2), wallEdgeMat))
   }
 
-  const hingeMat = new THREE.LineBasicMaterial({color: 0xff66ff, linewidth: 2})
+  const hingeMat = new THREE.LineBasicMaterial({color: 0xffffff, linewidth: 2})
   const hingePts = [new THREE.Vector3(-gridSize / 2, 0.003, -gridSize / 2), new THREE.Vector3(gridSize / 2, 0.003, -gridSize / 2)]
   group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(hingePts), hingeMat))
 
@@ -673,6 +674,18 @@ const rugARScenePipelineModule = () => {
               wallMarker.position.set(pt.x, 0, pt.z)
               wallMarker.lookAt(cam.position.x, 0, cam.position.z)
               wallMarker.visible = true
+              const gs = 0.3
+              const wallCenter = new THREE.Vector3(0, gs / 2, -gs / 2)
+              wallCenter.applyMatrix4(wallMarker.matrixWorld)
+              const screenPos = wallCenter.clone().project(cam)
+              const sx = (screenPos.x * 0.5 + 0.5) * window.innerWidth
+              const sy = (-screenPos.y * 0.5 + 0.5) * window.innerHeight
+              const el = document.getElementById('tap-indicator')
+              if (el && el.style.display !== 'none') {
+                el.style.left = sx + 'px'
+                el.style.top = sy + 'px'
+                el.style.transform = 'translate(-50%, -50%)'
+              }
             } else {
               wallMarker.visible = false
             }
