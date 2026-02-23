@@ -264,6 +264,34 @@ const createDimToggle = (onToggle) => {
   return btn
 }
 
+const makeFloorMarker = (scene) => {
+  const group = new THREE.Group()
+  const radius = 0.3
+  const ringGeo = new THREE.RingGeometry(radius - 0.02, radius, 48)
+  const ringMat = new THREE.MeshBasicMaterial({color: 0x00ccff, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false})
+  const ring = new THREE.Mesh(ringGeo, ringMat)
+  ring.rotation.x = -Math.PI / 2
+  ring.position.y = 0.002
+  group.add(ring)
+
+  const innerGeo = new THREE.CircleGeometry(radius - 0.02, 48)
+  const innerMat = new THREE.MeshBasicMaterial({color: 0x00ccff, transparent: true, opacity: 0.15, side: THREE.DoubleSide, depthWrite: false})
+  const inner = new THREE.Mesh(innerGeo, innerMat)
+  inner.rotation.x = -Math.PI / 2
+  inner.position.y = 0.001
+  group.add(inner)
+
+  const crossSize = radius * 0.4
+  const crossMat = new THREE.LineBasicMaterial({color: 0xffffff})
+  const hPts = [new THREE.Vector3(-crossSize, 0.003, 0), new THREE.Vector3(crossSize, 0.003, 0)]
+  group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(hPts), crossMat))
+  const vPts = [new THREE.Vector3(0, 0.003, -crossSize), new THREE.Vector3(0, 0.003, crossSize)]
+  group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(vPts), crossMat))
+
+  scene.add(group)
+  return group
+}
+
 const makeGridPlane = (scene) => {
   const group = new THREE.Group()
   const gridSize = 0.6
@@ -347,6 +375,7 @@ const rugARScenePipelineModule = () => {
   let groundMesh = null
   let virtualWall = null
   let wallMarker = null
+  let floorMarker = null
 
   const preloadModel = () => {
     return new Promise((resolve, reject) => {
@@ -396,14 +425,12 @@ const rugARScenePipelineModule = () => {
 
     camera.position.set(0, 1.6, 0)
 
-    if (placementMode === 'wall') {
-      const gGeo = new THREE.PlaneGeometry(200, 200)
-      const gMat = new THREE.MeshBasicMaterial({visible: false, side: THREE.DoubleSide})
-      groundMesh = new THREE.Mesh(gGeo, gMat)
-      groundMesh.rotation.x = -Math.PI / 2
-      groundMesh.position.y = 0
-      scene.add(groundMesh)
-    }
+    const gGeo = new THREE.PlaneGeometry(200, 200)
+    const gMat = new THREE.MeshBasicMaterial({visible: false, side: THREE.DoubleSide})
+    groundMesh = new THREE.Mesh(gGeo, gMat)
+    groundMesh.rotation.x = -Math.PI / 2
+    groundMesh.position.y = 0
+    scene.add(groundMesh)
 
     preloadModel()
   }
@@ -458,33 +485,26 @@ const rugARScenePipelineModule = () => {
   }
 
   const handleFloorTap = (x, y) => {
-    const hitTestResults = XR8.XrController.hitTest(x, y, ['FEATURE_POINT'])
-    if (hitTestResults.length > 0) {
-      const hit = hitTestResults[0]
-      if (!placedArt) {
-        const art = createArtFromModel()
-        if (art) {
-          placedArt = art
-          scaleFactor = 1
-          targetScaleFactor = 1
-          art.position.set(hit.position.x, hit.position.y, hit.position.z)
-          if (hit.rotation) {
-            art.quaternion.set(hit.rotation.x, hit.rotation.y, hit.rotation.z, hit.rotation.w)
-          }
-          XR8.Threejs.xrScene().scene.add(art)
-          animateIn(placedArt)
-          hideTapIndicator()
-        } else {
-          showToast('Loading model... please wait', 2000)
-        }
-      } else {
-        placedArt.position.set(hit.position.x, hit.position.y, hit.position.z)
-        if (hit.rotation) {
-          placedArt.quaternion.set(hit.rotation.x, hit.rotation.y, hit.rotation.z, hit.rotation.w)
-        }
+    if (phase === 'scanning') {
+      if (!floorMarker || !floorMarker.visible) {
+        showToast('Point at the floor to place', 2000)
+        return
       }
-    } else if (!placedArt) {
-      showToast('No surface detected \u2014 try a textured area', 2000)
+      const art = createArtFromModel()
+      if (art) {
+        placedArt = art
+        scaleFactor = 1
+        targetScaleFactor = 1
+        art.position.copy(floorMarker.position)
+        art.rotation.x = -Math.PI / 2
+        XR8.Threejs.xrScene().scene.add(art)
+        floorMarker.visible = false
+        phase = 'placed'
+        hideTapIndicator()
+        animateIn(placedArt)
+      } else {
+        showToast('Loading model... please wait', 2000)
+      }
     }
   }
 
@@ -676,6 +696,31 @@ const rugARScenePipelineModule = () => {
         requestAnimationFrame(animate)
         TWEEN.update(time)
 
+        if (placementMode === 'floor' && phase === 'scanning' && floorMarker && tapEnabled) {
+          const cam = XR8.Threejs.xrScene().camera
+          const ndc = new THREE.Vector2(0, 0)
+          raycaster.setFromCamera(ndc, cam)
+          if (groundMesh) {
+            const hits = raycaster.intersectObject(groundMesh)
+            if (hits.length > 0) {
+              const pt = hits[0].point
+              floorMarker.position.set(pt.x, 0, pt.z)
+              floorMarker.visible = true
+              const screenPos = new THREE.Vector3(pt.x, 0.002, pt.z).project(cam)
+              const sx = (screenPos.x * 0.5 + 0.5) * window.innerWidth
+              const sy = (-screenPos.y * 0.5 + 0.5) * window.innerHeight
+              const el = document.getElementById('tap-indicator')
+              if (el && el.style.display !== 'none') {
+                el.style.left = sx + 'px'
+                el.style.top = sy + 'px'
+                el.style.transform = 'translate(-50%, -50%)'
+              }
+            } else {
+              floorMarker.visible = false
+            }
+          }
+        }
+
         if (placementMode === 'wall' && phase === 'scanning' && wallMarker && tapEnabled) {
           const cam = XR8.Threejs.xrScene().camera
           const ndc = new THREE.Vector2(0, 0)
@@ -780,6 +825,10 @@ const rugARScenePipelineModule = () => {
             setTapText('Align with wall base & Tap')
             wallMarker = makeGridPlane(XR8.Threejs.xrScene().scene)
             wallMarker.visible = false
+          } else if (placementMode === 'floor') {
+            setTapText('Point at floor & Tap')
+            floorMarker = makeFloorMarker(XR8.Threejs.xrScene().scene)
+            floorMarker.visible = false
           }
           showTapIndicator()
           console.log('Tap-to-place enabled (mode: ' + placementMode + ')')
