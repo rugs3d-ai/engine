@@ -511,15 +511,24 @@ const rugARScenePipelineModule = () => {
         scaleFactor = 1
         targetScaleFactor = 1
         art.quaternion.copy(virtualWall.quaternion)
-        const placementPos = virtualWall.position.clone()
-        const upDir = new THREE.Vector3(0, 1, 0)
-        placementPos.add(upDir.multiplyScalar(1.5))
-        art.position.copy(placementPos)
+        art.position.copy(virtualWall.position.clone().add(new THREE.Vector3(0, 1, 0)))
         XR8.Threejs.xrScene().scene.add(art)
         art.scale.set(1, 1, 1)
-        initialScale = {x: 1, y: 1, z: 1}
 
+        phase = 'wall-aim'
+        setTapText('Tap to place')
+        document.getElementById('crosshair').style.display = 'block'
+        showToast('Move to position & tap to place', 3000)
+      } else {
+        showToast('Loading model... please wait', 2000)
+      }
+    } else if (phase === 'wall-aim') {
+      if (placedArt) {
         phase = 'placed'
+        initialScale = {x: placedArt.scale.x, y: placedArt.scale.y, z: placedArt.scale.z}
+        scaleFactor = 1
+        targetScaleFactor = 1
+        document.getElementById('crosshair').style.display = 'none'
         hideTapIndicator()
         const localBbox = new THREE.Box3().setFromObject(artModelTemplate)
         requestAnimationFrame(() => {
@@ -533,8 +542,6 @@ const rugARScenePipelineModule = () => {
           })
         })
         showToast('Pinch to scale \u2022 Drag to move', 4000)
-      } else {
-        showToast('Loading model... please wait', 2000)
       }
     }
   }
@@ -689,6 +696,27 @@ const rugARScenePipelineModule = () => {
               }
             } else {
               wallMarker.visible = false
+            }
+          }
+        }
+
+        if (placementMode === 'wall' && phase === 'wall-aim' && placedArt && virtualWall) {
+          const cam = XR8.Threejs.xrScene().camera
+          const ndc = new THREE.Vector2(0, 0)
+          raycaster.setFromCamera(ndc, cam)
+          const hits = raycaster.intersectObject(virtualWall)
+          if (hits.length > 0) {
+            const hitPt = hits[0].point
+            hitPt.y = Math.max(hitPt.y, virtualWall.position.y + 0.5)
+            placedArt.position.lerp(hitPt, 0.3)
+            const screenPos = placedArt.position.clone().project(cam)
+            const sx = (screenPos.x * 0.5 + 0.5) * window.innerWidth
+            const sy = (-screenPos.y * 0.5 + 0.5) * window.innerHeight
+            const el = document.getElementById('tap-indicator')
+            if (el && el.style.display !== 'none') {
+              el.style.left = sx + 'px'
+              el.style.top = sy + 'px'
+              el.style.transform = 'translate(-50%, -50%)'
             }
           }
         }
