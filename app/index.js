@@ -511,21 +511,16 @@ const rugARScenePipelineModule = () => {
         scaleFactor = 1
         targetScaleFactor = 1
         art.quaternion.copy(virtualWall.quaternion)
+        const placementPos = virtualWall.position.clone()
+        const upDir = new THREE.Vector3(0, 1, 0)
+        placementPos.add(upDir.multiplyScalar(1.5))
+        art.position.copy(placementPos)
         XR8.Threejs.xrScene().scene.add(art)
         art.scale.set(1, 1, 1)
-      }
+        initialScale = {x: 1, y: 1, z: 1}
 
-      phase = 'wall-aim'
-      setTapText('Tap to place art on wall')
-      document.getElementById('crosshair').style.display = 'block'
-      resetTapIndicatorPosition()
-      showToast('Aim at the wall & tap to place', 3000)
-    } else if (phase === 'wall-aim') {
-      if (placedArt) {
         phase = 'placed'
-        initialScale = {x: placedArt.scale.x, y: placedArt.scale.y, z: placedArt.scale.z}
-        scaleFactor = 1
-        targetScaleFactor = 1
+        hideTapIndicator()
         const localBbox = new THREE.Box3().setFromObject(artModelTemplate)
         requestAnimationFrame(() => {
           dimElements = createDimensionArrows(placedArt, localBbox)
@@ -537,9 +532,9 @@ const rugARScenePipelineModule = () => {
             if (tbtn) tbtn.textContent = dimVisible ? 'Hide Markers' : 'Show Markers'
           })
         })
-        hideTapIndicator()
-        document.getElementById('crosshair').style.display = 'none'
         showToast('Pinch to scale \u2022 Drag to move', 4000)
+      } else {
+        showToast('Loading model... please wait', 2000)
       }
     }
   }
@@ -698,26 +693,7 @@ const rugARScenePipelineModule = () => {
           }
         }
 
-        if (placementMode === 'wall' && phase === 'wall-aim' && placedArt && virtualWall) {
-          const cam = XR8.Threejs.xrScene().camera
-          const ndc = new THREE.Vector2(0, 0)
-          raycaster.setFromCamera(ndc, cam)
-          const hits = raycaster.intersectObject(virtualWall)
-          if (hits.length > 0) {
-            placedArt.position.copy(hits[0].point)
-            const screenPos = hits[0].point.clone().project(cam)
-            const sx = (screenPos.x * 0.5 + 0.5) * window.innerWidth
-            const sy = (-screenPos.y * 0.5 + 0.5) * window.innerHeight
-            const el = document.getElementById('tap-indicator')
-            if (el && el.style.display !== 'none') {
-              el.style.left = sx + 'px'
-              el.style.top = sy + 'px'
-              el.style.transform = 'translate(-50%, -50%)'
-            }
-          }
-        }
-
-        if (placedArt) {
+        if (placedArt && phase === 'placed') {
           if (isDragging) {
             placedArt.position.lerp(dragTarget, dragLerpFactor)
           }
