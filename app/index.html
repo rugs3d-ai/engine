@@ -42,12 +42,12 @@
 	   <script async src="./xr.js" data-preload-chunks="slam"></script>
 	
 	   <!-- Client code -->
-	   <script src="index.js?v=37"></script>
+	   <script src="index.js?v=38"></script>
 	 </head>
 	
 	 <body>
 	   <!-- Preview Page - shown by default -->
-	   <div id="preview-page" data-placement="floor">
+	   <div id="preview-page" data-placement="floor" data-ar-mode="auto">
 	     <model-viewer
 	       id="model-viewer"
 	       src="https://dfcksvowcprcrpkpfptk.supabase.co/storage/v1/object/public/3d-models/models/2A0pQDoKVq/carpet_model_20260210_094217.glb"
@@ -92,6 +92,14 @@
 
  	   <!-- Scale percentage label -->
  	   <div id="scale-label" style="opacity: 0;"></div>
+
+     <!-- QR code overlay (desktop) -->
+     <div id="qr-overlay" style="display: none;">
+       <div class="qr-content">
+         <p>Scan with your phone to view in AR</p>
+         <img id="qr-img" alt="QR Code" />
+       </div>
+     </div>
 	 </body>
 	</html>
 

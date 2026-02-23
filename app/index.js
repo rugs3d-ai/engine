@@ -7,6 +7,55 @@
 // GLB model URL (Supabase)
 const RUG_MODEL_URL = 'https://dfcksvowcprcrpkpfptk.supabase.co/storage/v1/object/public/3d-models/models/2A0pQDoKVq/carpet_model_20260210_094217.glb'
 
+const getDevice = () => {
+  const ua = navigator.userAgent || ''
+  if (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) return 'ios'
+  if (/android/i.test(ua)) return 'android'
+  return 'desktop'
+}
+
+const isInAppBrowser = () => {
+  const ua = navigator.userAgent || ''
+  return /FBAN|FBAV|Instagram|LinkedInApp|Twitter|Line\/|Snapchat|TikTok|BytedanceWebview|Musical_ly|UCBrowser|MicroMessenger|WeChat|QQ\/|Weibo|Pinterest/i.test(ua)
+}
+
+const resolveARRoute = (arMode) => {
+  const device = getDevice()
+  if (device === 'desktop') return 'qrcode'
+  if (arMode === 'webxr') return 'webxr'
+  if (arMode === 'native') {
+    return device === 'ios' ? 'quicklook' : 'sceneviewer'
+  }
+  if (device === 'android') return 'webxr'
+  if (isInAppBrowser()) return 'webxr'
+  return 'quicklook'
+}
+
+const triggerQuickLook = (modelUrl) => {
+  const a = document.createElement('a')
+  a.rel = 'ar'
+  a.href = modelUrl
+  const img = document.createElement('img')
+  a.appendChild(img)
+  document.body.appendChild(a)
+  a.click()
+  setTimeout(() => a.remove(), 100)
+}
+
+const triggerSceneViewer = (modelUrl) => {
+  const fallbackUrl = encodeURIComponent(window.location.href)
+  const intentUrl = 'intent://arvr.google.com/scene-viewer/1.0?file=' + encodeURIComponent(modelUrl) + '&mode=ar_preferred&link=' + fallbackUrl + '&title=3D%20Model#Intent;scheme=https;package=com.google.android.googlequicksearchbox;action=android.intent.action.VIEW;end;'
+  window.location.href = intentUrl
+}
+
+const showQROverlay = () => {
+  const overlay = document.getElementById('qr-overlay')
+  if (overlay) overlay.style.display = 'flex'
+  const pageUrl = encodeURIComponent(window.location.href)
+  const qrImg = document.getElementById('qr-img')
+  if (qrImg) qrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + pageUrl
+}
+
 let arStarted = false
 let tapEnabled = false
 
@@ -882,7 +931,30 @@ const waitForARReady = () => {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  const previewPage = document.getElementById('preview-page')
+  const arMode = previewPage.dataset.arMode || 'auto'
+  const route = resolveARRoute(arMode)
   const arBtn = document.getElementById('view-ar-btn')
+  const modelUrl = document.getElementById('model-viewer').getAttribute('src')
+
+  if (route === 'qrcode') {
+    arBtn.style.display = 'none'
+    showQROverlay()
+    return
+  }
+
+  if (route === 'quicklook') {
+    arBtn.disabled = false
+    arBtn.addEventListener('click', () => triggerQuickLook(modelUrl))
+    return
+  }
+
+  if (route === 'sceneviewer') {
+    arBtn.disabled = false
+    arBtn.addEventListener('click', () => triggerSceneViewer(modelUrl))
+    return
+  }
+
   arBtn.disabled = true
   arBtn.classList.add('loading')
   arBtn.textContent = 'Loading AR...'

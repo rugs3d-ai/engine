@@ -276,6 +276,43 @@
 	 transition: opacity 0.3s ease;
 	}
 
+	#qr-overlay {
+	 position: fixed;
+	 top: 0;
+	 left: 0;
+	 width: 100%;
+	 height: 100%;
+	 display: flex;
+	 align-items: center;
+	 justify-content: center;
+	 z-index: 10002;
+	 pointer-events: none;
+	}
+
+	.qr-content {
+	 background: rgba(255, 255, 255, 0.95);
+	 backdrop-filter: blur(10px);
+	 -webkit-backdrop-filter: blur(10px);
+	 border-radius: 16px;
+	 padding: 30px;
+	 text-align: center;
+	 box-shadow: 0 4px 30px rgba(0, 0, 0, 0.15);
+	 pointer-events: auto;
+	}
+
+	.qr-content p {
+	 color: #1a1a1a;
+	 font-size: 16px;
+	 font-weight: 600;
+	 margin: 0 0 20px 0;
+	}
+
+	.qr-content img {
+	 width: 200px;
+	 height: 200px;
+	 border-radius: 8px;
+	}
+
 	#crosshair {
 	 position: fixed;
 	 top: 50%;
