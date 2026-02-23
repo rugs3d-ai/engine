@@ -496,7 +496,6 @@ const rugARScenePipelineModule = () => {
         scaleFactor = 1
         targetScaleFactor = 1
         art.position.copy(floorMarker.position)
-        art.rotation.x = -Math.PI / 2
         XR8.Threejs.xrScene().scene.add(art)
         floorMarker.visible = false
         phase = 'placed'
