@@ -32,8 +32,8 @@ const resolveARRoute = (arMode) => {
   const device = getDevice()
   if (device === 'desktop') return 'qrcode'
   if (device === 'android') {
-    if (isInAppBrowser()) return 'modelviewer-android'
-    return 'webxr-android'
+    if (isInAppBrowser()) return 'sceneviewer-direct'
+    return 'modelviewer-webxr-android'
   }
   if (arMode === 'webxr') return 'webxr'
   if (arMode === 'native') return 'quicklook'
@@ -1021,8 +1021,8 @@ document.addEventListener('DOMContentLoaded', () => {
     return
   }
 
-  if (route === 'modelviewer-android') {
-    dbg('Route: Android in-app browser → Scene Viewer')
+  if (route === 'sceneviewer-direct') {
+    dbg('Route: Android in-app browser → Scene Viewer direct')
     const placement = previewPage.dataset.placement || 'floor'
     arBtn.disabled = false
     arBtn.addEventListener('click', () => {
@@ -1031,43 +1031,31 @@ document.addEventListener('DOMContentLoaded', () => {
     return
   }
 
-  if (route === 'webxr-android') {
-    dbg('Route: Android WebXR (8th Wall) with Scene Viewer fallback')
+  if (route === 'modelviewer-webxr-android') {
+    dbg('Route: Android → model-viewer WebXR first, Scene Viewer fallback')
     const placement = previewPage.dataset.placement || 'floor'
-    arBtn.disabled = true
-    arBtn.classList.add('loading')
-    arBtn.textContent = 'Loading AR...'
-    arBtn.addEventListener('click', () => {
-      if (typeof XR8 !== 'undefined' && typeof XRExtras !== 'undefined') {
-        dbg('Android: trying 8th Wall WebXR')
-        pipelineStarted = false
-        startAR()
-        setTimeout(() => {
-          if (!pipelineStarted) {
-            dbg('Pipeline timeout — falling back to Scene Viewer')
-            showToast('Switching to Scene Viewer...', 2000)
-            setTimeout(() => launchSceneViewerDirect(RUG_MODEL_URL, placement), 1500)
-          }
-        }, 8000)
+    mv.setAttribute('ar-placement', placement)
+    mv.setAttribute('ar-scale', 'auto')
+    arBtn.disabled = false
+    arBtn.addEventListener('click', async () => {
+      let webxrSupported = false
+      try {
+        if (navigator.xr) {
+          webxrSupported = await navigator.xr.isSessionSupported('immersive-ar')
+        }
+      } catch (e) {
+        dbg('WebXR check error: ' + e.message)
+      }
+      if (webxrSupported) {
+        dbg('Android: WebXR supported → model-viewer WebXR')
+        mv.setAttribute('ar-modes', 'webxr')
+        if (mv.updateComplete) await mv.updateComplete
+        if (mv.activateAR) mv.activateAR()
       } else {
-        dbg('XR8 not loaded — launching Scene Viewer directly')
+        dbg('Android: WebXR not supported → Scene Viewer (occlusion enabled)')
         launchSceneViewerDirect(RUG_MODEL_URL, placement)
       }
     })
-    const readyTimeout = setTimeout(() => {
-      dbg('XR8 load timeout — enabling button for Scene Viewer fallback')
-      enableARButton()
-    }, 10000)
-    const checkReady = () => {
-      if (typeof XRExtras !== 'undefined' && typeof XR8 !== 'undefined') {
-        clearTimeout(readyTimeout)
-        dbg('AR ready (Android): XRExtras + XR8 loaded')
-        enableARButton()
-      } else {
-        setTimeout(checkReady, 200)
-      }
-    }
-    checkReady()
     return
   }
 
