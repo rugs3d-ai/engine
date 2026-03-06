@@ -38,13 +38,17 @@ const resolveARRoute = (arMode) => {
 }
 
 const launchSceneViewerDirect = (glbUrl, placement) => {
-  const params = new URLSearchParams()
-  params.set('file', glbUrl)
-  params.set('mode', 'ar_preferred')
-  if (placement === 'wall') params.set('enable_vertical_placement', 'true')
+  const fileParam = encodeURIComponent(glbUrl)
   const fallback = encodeURIComponent(window.location.href)
-  const intentUrl = `intent://arvr.google.com/scene-viewer/1.2?${params.toString()}#Intent;scheme=https;package=com.google.android.googlequicksearchbox;action=android.intent.action.VIEW;S.browser_fallback_url=${fallback};end;`
-  dbg('Scene Viewer intent (occlusion enabled): ' + intentUrl)
+  let queryParts = [
+    'file=' + fileParam,
+    'mode=ar_preferred',
+    'disable_occlusion=false'
+  ]
+  if (placement === 'wall') queryParts.push('enable_vertical_placement=true')
+  const query = queryParts.join('&')
+  const intentUrl = `intent://arvr.google.com/scene-viewer/1.0?${query}#Intent;scheme=https;package=com.google.android.googlequicksearchbox;action=android.intent.action.VIEW;S.browser_fallback_url=${fallback};end;`
+  dbg('Scene Viewer intent: ' + intentUrl)
   window.location.href = intentUrl
 }
 
