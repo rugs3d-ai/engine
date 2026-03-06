@@ -13,23 +13,14 @@
 	   <!-- Google Model Viewer for 3D preview -->
 	   <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
 	
-	   <!-- Three.js 160+ requires the use of import maps -->
-	   <script type="importmap">
-	     {
-	       "imports": {
-	         "three": "https://unpkg.com/three@0.172.0/build/three.module.min.js",
-	         "three/addons/": "https://unpkg.com/three@0.172.0/examples/jsm/"
-	       }
-	     }
-	   </script>
-	
-	   <script type="module">
-	     import * as THREE from 'three';
-	     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-	
-	     window.THREE = { ...THREE };
-	     window.THREE.GLTFLoader = GLTFLoader;
-	   </script>
+    <!-- Three.js (full URLs, no import maps needed for broader device support) -->
+ 	   <script type="module">
+ 	     import * as THREE from 'https://esm.sh/three@0.172.0';
+ 	     import { GLTFLoader } from 'https://esm.sh/three@0.172.0/examples/jsm/loaders/GLTFLoader.js';
+
+ 	     window.THREE = { ...THREE };
+ 	     window.THREE.GLTFLoader = GLTFLoader;
+ 	   </script>
 	
 	   <!-- Javascript tweening engine -->
 	   <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/16.3.5/Tween.min.js"></script>
@@ -42,12 +33,12 @@
 	   <script async src="./xr.js" data-preload-chunks="slam"></script>
 	
 	   <!-- Client code -->
-	   <script src="index.js?v=45"></script>
+	   <script src="index.js?v=55"></script>
 	 </head>
 	
 	 <body>
 	   <!-- Preview Page - shown by default -->
-	   <div id="preview-page" data-placement="floor" data-ar-mode="auto">
+	   <div id="preview-page" data-placement="wall" data-ar-mode="auto">
       <model-viewer
  	       id="model-viewer"
  	       src="https://dfcksvowcprcrpkpfptk.supabase.co/storage/v1/object/public/3d-models/models/2A0pQDoKVq/carpet_model_20260210_094217.glb"

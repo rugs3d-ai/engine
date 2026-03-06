@@ -4,6 +4,14 @@
 
 /* globals XR8 XRExtras THREE TWEEN */
 
+const _dbgEl = document.createElement('div')
+_dbgEl.id = 'debug-overlay'
+_dbgEl.setAttribute('style', 'position:fixed;top:0;left:0;right:0;z-index:2147483647;background:rgba(0,0,0,0.85);color:#0f0;font:11px/1.4 monospace;padding:8px;max-height:40vh;overflow-y:auto;pointer-events:auto;display:none;white-space:pre-wrap;word-break:break-all;')
+document.addEventListener('DOMContentLoaded', () => document.body.appendChild(_dbgEl))
+const dbg = (msg) => { _dbgEl.style.display = 'block'; _dbgEl.textContent += new Date().toISOString().slice(11, 23) + ' ' + msg + '\n'; _dbgEl.scrollTop = _dbgEl.scrollHeight; console.log('[DBG]', msg) }
+window.addEventListener('error', (e) => dbg('GLOBAL ERROR: ' + e.message + ' @ ' + e.filename + ':' + e.lineno))
+window.addEventListener('unhandledrejection', (e) => dbg('UNHANDLED REJECT: ' + (e.reason && e.reason.message || e.reason)))
+
 // GLB model URL (Supabase)
 const RUG_MODEL_URL = 'https://dfcksvowcprcrpkpfptk.supabase.co/storage/v1/object/public/3d-models/models/2A0pQDoKVq/carpet_model_20260210_094217.glb'
 
@@ -22,13 +30,22 @@ const isInAppBrowser = () => {
 const resolveARRoute = (arMode) => {
   const device = getDevice()
   if (device === 'desktop') return 'qrcode'
+  if (device === 'android') return 'modelviewer-android'
   if (arMode === 'webxr') return 'webxr'
-  if (arMode === 'native') {
-    return device === 'ios' ? 'quicklook' : 'sceneviewer'
-  }
-  if (device === 'android') return 'webxr'
+  if (arMode === 'native') return 'quicklook'
   if (isInAppBrowser()) return 'webxr'
-  return 'quicklook'
+  return 'webxr'
+}
+
+const launchSceneViewerDirect = (glbUrl, placement) => {
+  const params = new URLSearchParams()
+  params.set('file', glbUrl)
+  params.set('mode', 'ar_preferred')
+  if (placement === 'wall') params.set('enable_vertical_placement', 'true')
+  const fallback = encodeURIComponent(window.location.href)
+  const intentUrl = `intent://arvr.google.com/scene-viewer/1.2?${params.toString()}#Intent;scheme=https;package=com.google.android.googlequicksearchbox;action=android.intent.action.VIEW;S.browser_fallback_url=${fallback};end;`
+  dbg('Scene Viewer intent (occlusion enabled): ' + intentUrl)
+  window.location.href = intentUrl
 }
 
 const triggerNativeAR = () => {
@@ -723,8 +740,11 @@ const rugARScenePipelineModule = () => {
     name: 'rug-ar',
 
     onStart: ({canvas}) => {
+      dbg('PIPELINE onStart fired!')
       const {scene, camera, renderer} = XR8.Threejs.xrScene()
+      dbg('xrScene obtained: scene=' + !!scene + ' camera=' + !!camera + ' renderer=' + !!renderer)
       initXrScene({scene, camera, renderer})
+      dbg('initXrScene done')
 
       canvas.addEventListener('touchstart', touchStartHandler, true)
       canvas.addEventListener('touchmove', touchMoveHandler, {passive: false, capture: true})
@@ -880,26 +900,79 @@ const rugARScenePipelineModule = () => {
   }
 }
 
-const onxrloaded = () => {
-  XR8.XrController.configure({scale: 'absolute'})
+const setupAndRun = () => {
+  dbg('setupAndRun called')
+  try {
+    dbg('XR8.XrController exists: ' + !!XR8.XrController)
+    XR8.XrController.configure({scale: 'absolute'})
+    dbg('XrController configured')
 
-  XR8.addCameraPipelineModules([
-    XR8.GlTextureRenderer.pipelineModule(),
-    XR8.Threejs.pipelineModule(),
-    XR8.XrController.pipelineModule(),
-    XRExtras.AlmostThere.pipelineModule(),
-    XRExtras.FullWindowCanvas.pipelineModule(),
-    XRExtras.Loading.pipelineModule(),
-    XRExtras.RuntimeError.pipelineModule(),
-    rugARScenePipelineModule(),
-  ])
+    const isAndroid = getDevice() === 'android'
+    const inApp = isInAppBrowser()
+    const modules = [
+      XR8.GlTextureRenderer.pipelineModule(),
+      XR8.Threejs.pipelineModule(),
+      XR8.XrController.pipelineModule(),
+      rugARScenePipelineModule(),
+    ]
+    if (!isAndroid) {
+      modules.splice(3, 0, XRExtras.AlmostThere.pipelineModule())
+      modules.splice(4, 0, XRExtras.FullWindowCanvas.pipelineModule())
+      modules.splice(5, 0, XRExtras.Loading.pipelineModule())
+      modules.splice(6, 0, XRExtras.RuntimeError.pipelineModule())
+    } else if (!inApp) {
+      modules.splice(3, 0, XRExtras.FullWindowCanvas.pipelineModule())
+    }
+    XR8.addCameraPipelineModules(modules)
+    dbg('Pipeline modules added (android=' + isAndroid + ' inApp=' + inApp + ')')
 
-  XR8.run({canvas: document.getElementById('camerafeed')})
+    const canvas = document.getElementById('camerafeed')
+    if (isAndroid && inApp) {
+      canvas.width = window.innerWidth * window.devicePixelRatio
+      canvas.height = window.innerHeight * window.devicePixelRatio
+      dbg('Canvas manually sized to ' + canvas.width + 'x' + canvas.height)
+    }
+    dbg('Canvas found: ' + !!canvas + ', size: ' + canvas.width + 'x' + canvas.height)
+    dbg('WebGL context: ' + !!(canvas.getContext('webgl2') || canvas.getContext('webgl')))
+    XR8.run({canvas})
+    dbg('XR8.run() called')
+    setTimeout(() => {
+      const c = document.getElementById('camerafeed')
+      dbg('POST-RUN (1s): canvas size=' + c.width + 'x' + c.height + ' display=' + c.style.display + ' visibility=' + getComputedStyle(c).visibility)
+      const arView = document.getElementById('ar-view')
+      dbg('POST-RUN (1s): ar-view display=' + arView.style.display + ' computed=' + getComputedStyle(arView).display)
+      const gl = c.getContext('webgl2') || c.getContext('webgl')
+      dbg('POST-RUN (1s): gl context=' + !!gl + ' lost=' + (gl ? gl.isContextLost() : 'N/A'))
+    }, 1000)
+    setTimeout(() => {
+      const c = document.getElementById('camerafeed')
+      dbg('POST-RUN (3s): canvas size=' + c.width + 'x' + c.height)
+      const gl = c.getContext('webgl2') || c.getContext('webgl')
+      dbg('POST-RUN (3s): gl context=' + !!gl + ' lost=' + (gl ? gl.isContextLost() : 'N/A'))
+    }, 3000)
+  } catch (e) {
+    dbg('ERROR in setupAndRun: ' + e.message)
+  }
 }
 
 const startAR = () => {
-  showARView()
-  XRExtras.Loading.showLoading({onxrloaded})
+  dbg('startAR called')
+  try {
+    showARView()
+    dbg('showARView done')
+    dbg('XRExtras exists: ' + (typeof XRExtras !== 'undefined'))
+    dbg('XR8 exists: ' + (typeof XR8 !== 'undefined'))
+    dbg('XR8.XrController exists: ' + !!(typeof XR8 !== 'undefined' && XR8.XrController))
+    if (getDevice() === 'android') {
+      dbg('Android: bypassing XRExtras.Loading, calling setupAndRun directly')
+      setupAndRun()
+    } else {
+      XRExtras.Loading.showLoading({onxrloaded: setupAndRun})
+      dbg('showLoading called')
+    }
+  } catch (e) {
+    dbg('ERROR in startAR: ' + e.message)
+  }
 }
 
 const enableARButton = () => {
@@ -912,8 +985,10 @@ const enableARButton = () => {
 const waitForARReady = () => {
   const check = () => {
     if (typeof XRExtras !== 'undefined' && typeof XR8 !== 'undefined') {
+      dbg('AR ready: XRExtras + XR8 loaded')
       enableARButton()
     } else {
+      dbg('Waiting... XRExtras:' + (typeof XRExtras !== 'undefined') + ' XR8:' + (typeof XR8 !== 'undefined'))
       setTimeout(check, 200)
     }
   }
@@ -921,22 +996,35 @@ const waitForARReady = () => {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  dbg('DOMContentLoaded fired')
+  dbg('UA: ' + navigator.userAgent)
   const previewPage = document.getElementById('preview-page')
   const arMode = previewPage.dataset.arMode || 'auto'
   const route = resolveARRoute(arMode)
+  dbg('device=' + getDevice() + ' arMode=' + arMode + ' route=' + route)
   const arBtn = document.getElementById('view-ar-btn')
   const mv = document.getElementById('model-viewer')
-  const modelUrl = mv.getAttribute('src')
 
   if (route === 'qrcode') {
+    dbg('Route: QR code (desktop)')
     arBtn.style.display = 'none'
     showQROverlay()
     return
   }
 
-  if (route === 'quicklook' || route === 'sceneviewer') {
-    const device = getDevice()
-    mv.setAttribute('ar-modes', device === 'android' ? 'webxr scene-viewer' : 'quick-look')
+  if (route === 'modelviewer-android') {
+    dbg('Route: Android → direct Scene Viewer (occlusion enabled)')
+    const placement = previewPage.dataset.placement || 'floor'
+    arBtn.disabled = false
+    arBtn.addEventListener('click', () => {
+      launchSceneViewerDirect(RUG_MODEL_URL, placement)
+    })
+    return
+  }
+
+  if (route === 'quicklook') {
+    dbg('Route: native (quicklook)')
+    mv.setAttribute('ar-modes', 'quick-look')
     mv.setAttribute('ar-scale', 'auto')
     mv.setAttribute('ar-placement', previewPage.dataset.placement || 'floor')
     arBtn.disabled = false
@@ -944,6 +1032,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return
   }
 
+  dbg('Route: webxr (8th Wall)')
   arBtn.disabled = true
   arBtn.classList.add('loading')
   arBtn.textContent = 'Loading AR...'
