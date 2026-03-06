@@ -14,6 +14,7 @@ window.addEventListener('unhandledrejection', (e) => dbg('UNHANDLED REJECT: ' + 
 
 // GLB model URL (Supabase)
 const RUG_MODEL_URL = 'https://dfcksvowcprcrpkpfptk.supabase.co/storage/v1/object/public/3d-models/models/2A0pQDoKVq/carpet_model_20260210_094217.glb'
+let pipelineStarted = false
 
 const getDevice = () => {
   const ua = navigator.userAgent || ''
@@ -30,7 +31,10 @@ const isInAppBrowser = () => {
 const resolveARRoute = (arMode) => {
   const device = getDevice()
   if (device === 'desktop') return 'qrcode'
-  if (device === 'android') return 'modelviewer-android'
+  if (device === 'android') {
+    if (isInAppBrowser()) return 'modelviewer-android'
+    return 'webxr-android'
+  }
   if (arMode === 'webxr') return 'webxr'
   if (arMode === 'native') return 'quicklook'
   if (isInAppBrowser()) return 'webxr'
@@ -744,6 +748,7 @@ const rugARScenePipelineModule = () => {
     name: 'rug-ar',
 
     onStart: ({canvas}) => {
+      pipelineStarted = true
       dbg('PIPELINE onStart fired!')
       const {scene, camera, renderer} = XR8.Threejs.xrScene()
       dbg('xrScene obtained: scene=' + !!scene + ' camera=' + !!camera + ' renderer=' + !!renderer)
@@ -1017,12 +1022,52 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (route === 'modelviewer-android') {
-    dbg('Route: Android → direct Scene Viewer (occlusion enabled)')
+    dbg('Route: Android in-app browser → Scene Viewer')
     const placement = previewPage.dataset.placement || 'floor'
     arBtn.disabled = false
     arBtn.addEventListener('click', () => {
       launchSceneViewerDirect(RUG_MODEL_URL, placement)
     })
+    return
+  }
+
+  if (route === 'webxr-android') {
+    dbg('Route: Android WebXR (8th Wall) with Scene Viewer fallback')
+    const placement = previewPage.dataset.placement || 'floor'
+    arBtn.disabled = true
+    arBtn.classList.add('loading')
+    arBtn.textContent = 'Loading AR...'
+    arBtn.addEventListener('click', () => {
+      if (typeof XR8 !== 'undefined' && typeof XRExtras !== 'undefined') {
+        dbg('Android: trying 8th Wall WebXR')
+        pipelineStarted = false
+        startAR()
+        setTimeout(() => {
+          if (!pipelineStarted) {
+            dbg('Pipeline timeout — falling back to Scene Viewer')
+            showToast('Switching to Scene Viewer...', 2000)
+            setTimeout(() => launchSceneViewerDirect(RUG_MODEL_URL, placement), 1500)
+          }
+        }, 8000)
+      } else {
+        dbg('XR8 not loaded — launching Scene Viewer directly')
+        launchSceneViewerDirect(RUG_MODEL_URL, placement)
+      }
+    })
+    const readyTimeout = setTimeout(() => {
+      dbg('XR8 load timeout — enabling button for Scene Viewer fallback')
+      enableARButton()
+    }, 10000)
+    const checkReady = () => {
+      if (typeof XRExtras !== 'undefined' && typeof XR8 !== 'undefined') {
+        clearTimeout(readyTimeout)
+        dbg('AR ready (Android): XRExtras + XR8 loaded')
+        enableARButton()
+      } else {
+        setTimeout(checkReady, 200)
+      }
+    }
+    checkReady()
     return
   }
 
